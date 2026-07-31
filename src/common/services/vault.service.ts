@@ -5,6 +5,7 @@ import * as nodeVault from 'node-vault';
 export class VaultService implements OnModuleInit {
   private readonly logger = new Logger(VaultService.name);
   private vaultClient: nodeVault.client;
+  private adminPrivateKey: string;
 
   constructor() {
     this.vaultClient = nodeVault({
@@ -16,42 +17,30 @@ export class VaultService implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      // In dev mode, we mount a KV store if it doesn't exist
+      // Đọc secret từ Vault (đường dẫn ví dụ: secret/data/bounty-app)
+      // First, try mounting if it doesn't exist (for dev)
       await this.vaultClient.mounts().catch(() => {});
-      // Ensure kv secret engine is mounted at secret/
       await this.vaultClient.mount({ mount_point: 'secret', type: 'kv', options: { version: '2' } }).catch(() => {});
       
-      // Initialize with default admin key if not present (for development convenience)
-      const existing = await this.getSecret('admin-wallet').catch(() => null);
+      // Seed for dev if needed
+      const existing = await this.vaultClient.read('secret/data/bounty-app').catch(() => null);
       if (!existing) {
-        await this.setSecret('admin-wallet', {
-          privateKey: process.env.ADMIN_PRIVATE_KEY || '0000000000000000000000000000000000000000000000000000000000000000'
+        await this.vaultClient.write('secret/data/bounty-app', { 
+          data: { ADMIN_PRIVATE_KEY: process.env.ADMIN_PRIVATE_KEY || '0000000000000000000000000000000000000000000000000000000000000000' }
         });
-        this.logger.log('Initialized Vault with default admin wallet key for dev.');
       }
-      this.logger.log('Vault service initialized successfully.');
+
+      const result = await this.vaultClient.read('secret/data/bounty-app');
+      this.adminPrivateKey = result.data.data.ADMIN_PRIVATE_KEY;
+      this.logger.log('✅ Vault: Đã tải Private Key an toàn vào RAM.');
     } catch (error) {
-      this.logger.warn(`Failed to connect to Vault: ${error.message}. Is Vault running?`);
+      this.logger.error('❌ Vault: Lỗi khi lấy Private Key', error.stack);
+      // We do not throw error if we want the app to still start without vault (optional)
+      // throw error; 
     }
   }
 
-  async getSecret(path: string): Promise<any> {
-    try {
-      // KV v2 stores data under data/
-      const result = await this.vaultClient.read(`secret/data/${path}`);
-      return result.data.data;
-    } catch (error) {
-      this.logger.error(`Error reading secret from vault: ${error.message}`);
-      throw error;
-    }
-  }
-
-  async setSecret(path: string, data: any): Promise<void> {
-    try {
-      await this.vaultClient.write(`secret/data/${path}`, { data });
-    } catch (error) {
-      this.logger.error(`Error writing secret to vault: ${error.message}`);
-      throw error;
-    }
+  getPrivateKey(): string {
+    return this.adminPrivateKey;
   }
 }

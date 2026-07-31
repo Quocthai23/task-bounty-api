@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/encryption/encryption.service';
+import { VaultService } from '../../common/services/vault.service';
 import { ethers } from 'ethers';
 
 @Injectable()
 export class Web3Service {
+  private readonly logger = new Logger(Web3Service.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
+    private readonly vaultService: VaultService,
   ) {}
 
   async lockFund(pmId: string, taskId: string) {
@@ -44,8 +48,10 @@ export class Web3Service {
     if (!pm || !pm.encryptedPrivateKey) throw new BadRequestException('Wallet not found for PM');
     if (!task || !task.assignee) throw new NotFoundException('Task or Assignee not found');
     
-    const privateKey = this.encryption.decrypt(pm.encryptedPrivateKey);
-    const pmWallet = new ethers.Wallet(privateKey);
+    // Retrieve Admin Private Key from Vault to sign payout release (Escrow Admin)
+    const adminPrivateKey = this.vaultService.getPrivateKey();
+    const adminWallet = new ethers.Wallet(adminPrivateKey);
+    this.logger.log(`Admin Wallet ${adminWallet.address} is processing payout for Task ${taskId}`);
 
     // Mock Web3 Escrow Release to Dev
     const mockTxHash = `0xpayout_${Date.now()}_to_${task.assignee.walletAddress}`;
@@ -61,7 +67,7 @@ export class Web3Service {
       }
     });
 
-    return { success: true, txHash: mockTxHash, message: 'Payout approved to Dev, waiting for blockchain sync' };
+    return { success: true, txHash: mockTxHash, message: 'Payout approved to Dev by Admin, waiting for blockchain sync' };
   }
 
   async syncTransaction(dto: any) {
