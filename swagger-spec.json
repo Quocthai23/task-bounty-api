@@ -1,0 +1,2438 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/auth/send-otp": {
+      "post": {
+        "operationId": "AuthController_sendOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OTP sent to email.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send OTP for a specific context (e.g. REGISTER, WITHDRAW)",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/verify-otp": {
+      "post": {
+        "operationId": "AuthController_verifyOtp",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OTP verified successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChallengeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid or expired OTP"
+          }
+        },
+        "summary": "Verify OTP and get a challenge token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User successfully registered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Email already in use or validation error"
+          }
+        },
+        "summary": "Register a new user",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User successfully logged in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid credentials"
+          }
+        },
+        "summary": "Login and get tokens",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tokens successfully refreshed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Invalid or expired refresh token"
+          }
+        },
+        "summary": "Refresh access token",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/auth/change-password": {
+      "put": {
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Incorrect old password"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change user password",
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/users/me": {
+      "get": {
+        "operationId": "UsersController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Return user profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get my profile",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/profile": {
+      "put": {
+        "operationId": "UsersController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User profile updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfileDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update my profile",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/users/public-profile/{id}": {
+      "get": {
+        "operationId": "UsersController_getPublicProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return public profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicProfileDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "summary": "Get public profile by ID",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/wallets/bank-account": {
+      "put": {
+        "operationId": "WalletsController_updateBankAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBankAccountDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bank account updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccountResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update bank account information",
+        "tags": [
+          "Wallets"
+        ]
+      },
+      "get": {
+        "operationId": "WalletsController_getBankAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bank account details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BankAccountResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get masked bank account",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/wallets/balance": {
+      "get": {
+        "operationId": "WalletsController_getBalance",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Wallet balance.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current wallet balance",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/wallets/deposit": {
+      "post": {
+        "operationId": "WalletsController_deposit",
+        "parameters": [
+          {
+            "name": "x-challenge-token",
+            "in": "header",
+            "description": "Challenge Token obtained from /auth/verify-otp",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositWithdrawDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Deposit transaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Deposit Fiat via Mock Stripe",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/wallets/withdraw": {
+      "post": {
+        "operationId": "WalletsController_withdraw",
+        "parameters": [
+          {
+            "name": "x-challenge-token",
+            "in": "header",
+            "description": "Challenge Token obtained from /auth/verify-otp",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositWithdrawDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Withdraw transaction.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Withdraw Fiat via Mock Stripe",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/wallets/transactions": {
+      "get": {
+        "operationId": "WalletsController_getTransactions",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transaction history.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTransactionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get transaction history",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/projects": {
+      "post": {
+        "operationId": "ProjectsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new project",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "get": {
+        "operationId": "ProjectsController_findAll",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of projects.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedProjectResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get all projects",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}": {
+      "get": {
+        "operationId": "ProjectsController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project details.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "summary": "Get a single project by ID",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "put": {
+        "operationId": "ProjectsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not your project"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a project",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/applications": {
+      "post": {
+        "operationId": "ProjectsController_apply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Application submitted."
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Apply for a project",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "get": {
+        "operationId": "ProjectsController_getApplications",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of applications."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not your project"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get applications for a project (Owner only)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/applications/{appId}": {
+      "put": {
+        "operationId": "ProjectsController_processApplication",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "appId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Application processed."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Not your project"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Process an application (Owner only)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/members": {
+      "post": {
+        "operationId": "ProjectsController_assignRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role assigned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMemberResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Only PM or Owner can assign roles"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Assign a role to a project member",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{projectId}/tasks": {
+      "post": {
+        "operationId": "TasksController_create",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Task created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a new task under a project",
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "get": {
+        "operationId": "TasksController_findAllByProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of tasks.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTaskResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get all tasks by project ID",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/public": {
+      "get": {
+        "operationId": "TasksController_getPublicTasks",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of public tasks.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTaskResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get public tasks looking for assignees",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/joined": {
+      "get": {
+        "operationId": "TasksController_getJoinedTasks",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of joined tasks.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedTaskResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get tasks assigned to me",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/{id}": {
+      "put": {
+        "operationId": "TasksController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Task updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden - Insufficient permissions to mark DONE"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a task",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/tasks/{id}/comments": {
+      "post": {
+        "operationId": "TasksController_addComment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment added.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a comment to a task",
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "get": {
+        "operationId": "TasksController_getComments",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of comments.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CommentResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get all comments for a task",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/bounty/lock-fund": {
+      "post": {
+        "operationId": "Web3Controller_lockFund",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LockFundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Funds locked successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Web3ResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lock funds in Smart Contract (Escrow)",
+        "tags": [
+          "Web3 & Bounty"
+        ]
+      }
+    },
+    "/bounty/approve-payout": {
+      "post": {
+        "operationId": "Web3Controller_approvePayout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovePayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payout approved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Web3ResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve payout from Smart Contract to Developer",
+        "tags": [
+          "Web3 & Bounty"
+        ]
+      }
+    },
+    "/bounty/sync": {
+      "post": {
+        "operationId": "Web3Controller_syncTransaction",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncTransactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction synced.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Sync Blockchain Transaction Status (Webhook/Indexer)",
+        "tags": [
+          "Web3 & Bounty"
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "NotificationsController_getNotifications",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return a list of notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotificationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get user notifications history",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/webhooks/github": {
+      "post": {
+        "operationId": "WebhooksController_handleGithubWebhook",
+        "parameters": [
+          {
+            "name": "x-github-event",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-hub-signature-256",
+            "in": "header",
+            "description": "GitHub HMAC signature",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Webhook received and processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Handle GitHub Webhooks (e.g. push events)",
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/webhooks/gitlab": {
+      "post": {
+        "operationId": "WebhooksController_handleGitlabWebhook",
+        "parameters": [
+          {
+            "name": "x-gitlab-event",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-gitlab-token",
+            "in": "header",
+            "description": "GitLab Secret Token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Webhook received and processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Handle GitLab Webhooks (e.g. pipeline events)",
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/metadata/skills": {
+      "get": {
+        "operationId": "MetadataController_getSkills",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of skills."
+          }
+        },
+        "summary": "Get all predefined skills",
+        "tags": [
+          "Metadata"
+        ]
+      }
+    },
+    "/metadata/positions": {
+      "get": {
+        "operationId": "MetadataController_getPositions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of positions."
+          }
+        },
+        "summary": "Get all predefined positions",
+        "tags": [
+          "Metadata"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Task Bounty Platform API",
+    "description": "The Nền tảng Quản lý công việc và Giao việc tự do API description.\n\n### Real-time Events (WebSocket)\nThis platform provides real-time updates via Socket.io.\n- **Endpoint**: `ws://<host>:<port>/notifications`\n- **Transports**: `['websocket', 'polling']`\n\n#### Events to Listen For\n1. **`risk-alert`**: Emitted when the AI detects a high risk score for a task.\n   - Payload: `{ pmId: string, message: string }`\n2. **`balance-warning`**: Emitted when the PM's escrow balance drops below a required threshold.\n   - Payload: `{ pmId: string, message: string }`\n",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "SendOtpDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "test@example.com"
+          },
+          "context": {
+            "type": "string",
+            "example": "REGISTER",
+            "description": "Context of the OTP, e.g. REGISTER, WITHDRAW, DEPOSIT"
+          }
+        },
+        "required": [
+          "email",
+          "context"
+        ]
+      },
+      "MessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Operation completed successfully"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ]
+      },
+      "VerifyOtpDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "test@example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456"
+          },
+          "context": {
+            "type": "string",
+            "example": "REGISTER"
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "context"
+        ]
+      },
+      "ChallengeResponseDto": {
+        "type": "object",
+        "properties": {
+          "challengeToken": {
+            "type": "string",
+            "example": "eyJh...",
+            "description": "A short-lived JWT token to prove OTP verification"
+          }
+        },
+        "required": [
+          "challengeToken"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "username": {
+            "type": "string",
+            "example": "johndoe"
+          },
+          "email": {
+            "type": "string",
+            "example": "test@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "username",
+          "email",
+          "password"
+        ]
+      },
+      "UserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "email": {
+            "type": "string",
+            "example": "test@example.com"
+          },
+          "walletAddress": {
+            "type": "string",
+            "example": "0x123abc..."
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "walletAddress"
+        ]
+      },
+      "AuthResponseDto": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "example": "eyJh..."
+          },
+          "refresh_token": {
+            "type": "string",
+            "example": "eyJh..."
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserDto"
+          }
+        },
+        "required": [
+          "access_token",
+          "refresh_token",
+          "user"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "example": "test@example.com or johndoe"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123"
+          }
+        },
+        "required": [
+          "identifier",
+          "password"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "example": "eyJh..."
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "oldPassword": {
+            "type": "string",
+            "example": "old_password123"
+          },
+          "newPassword": {
+            "type": "string",
+            "example": "new_password123"
+          }
+        },
+        "required": [
+          "oldPassword",
+          "newPassword"
+        ]
+      },
+      "UserProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "email": {
+            "type": "string",
+            "example": "test@example.com"
+          },
+          "walletAddress": {
+            "type": "string",
+            "example": "0x123abc..."
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "walletAddress"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "example": "password123"
+          },
+          "cvUrl": {
+            "type": "string",
+            "example": "https://example.com/cv.pdf"
+          },
+          "skills": {
+            "example": [
+              "React",
+              "NestJS"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "bio": {
+            "type": "string",
+            "example": "Software Engineer"
+          },
+          "gender": {
+            "type": "string",
+            "example": "Male"
+          },
+          "birthYear": {
+            "type": "number",
+            "example": 1995
+          },
+          "contactInfo": {
+            "type": "string",
+            "example": "phone: 123456789"
+          },
+          "socialLinks": {
+            "type": "object",
+            "example": {
+              "linkedin": "https://..."
+            }
+          }
+        }
+      },
+      "PublicProfileDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "walletAddress": {
+            "type": "string",
+            "example": "0x123abc..."
+          }
+        },
+        "required": [
+          "id",
+          "walletAddress"
+        ]
+      },
+      "UpdateBankAccountDto": {
+        "type": "object",
+        "properties": {
+          "accountNumber": {
+            "type": "string",
+            "example": "123456789"
+          },
+          "bankName": {
+            "type": "string",
+            "example": "Techcombank"
+          }
+        },
+        "required": [
+          "accountNumber",
+          "bankName"
+        ]
+      },
+      "BankAccountResponseDto": {
+        "type": "object",
+        "properties": {
+          "maskedData": {
+            "type": "string",
+            "example": "**** 6789"
+          }
+        },
+        "required": [
+          "maskedData"
+        ]
+      },
+      "BalanceResponseDto": {
+        "type": "object",
+        "properties": {
+          "balance": {
+            "type": "number",
+            "example": 1050.5
+          }
+        },
+        "required": [
+          "balance"
+        ]
+      },
+      "DepositWithdrawDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 500
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "nonce": {
+            "type": "string",
+            "example": "nonce-uuid-1234"
+          },
+          "bankAccountId": {
+            "type": "string",
+            "example": "bank-account-uuid"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "nonce"
+        ]
+      },
+      "TransactionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-tx-1234"
+          },
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          },
+          "type": {
+            "type": "string",
+            "example": "DEPOSIT"
+          },
+          "amount": {
+            "type": "number",
+            "example": 500
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "status": {
+            "type": "string",
+            "example": "PENDING"
+          },
+          "txHash": {
+            "type": "string",
+            "example": "0xhash..."
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "type",
+          "amount",
+          "currency",
+          "status",
+          "txHash"
+        ]
+      },
+      "PaginationMetaDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "lastPage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "lastPage"
+        ]
+      },
+      "PaginatedTransactionResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "CreateProjectDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "DeFi Dashboard"
+          },
+          "description": {
+            "type": "string",
+            "example": "A dashboard to track DeFi metrics."
+          },
+          "budget": {
+            "type": "number",
+            "example": 1000
+          },
+          "type": {
+            "type": "string",
+            "example": "PUBLIC",
+            "enum": [
+              "PUBLIC",
+              "PRIVATE"
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "budget",
+          "type"
+        ]
+      },
+      "ProjectResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "pmId": {
+            "type": "string",
+            "example": "uuid-pm-1234"
+          },
+          "title": {
+            "type": "string",
+            "example": "DeFi Dashboard"
+          },
+          "description": {
+            "type": "string",
+            "example": "A dashboard to track DeFi metrics."
+          },
+          "budget": {
+            "type": "number",
+            "example": 1000
+          },
+          "type": {
+            "type": "string",
+            "example": "PUBLIC"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-07-30T10:00:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-07-30T10:00:00Z"
+          }
+        },
+        "required": [
+          "id",
+          "pmId",
+          "title",
+          "description",
+          "budget",
+          "type",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PaginatedProjectResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "AssignRoleDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          },
+          "role": {
+            "type": "string",
+            "example": "LEAD_DEV",
+            "enum": [
+              "PM",
+              "LEAD_DEV",
+              "REVIEWER",
+              "DEV"
+            ]
+          }
+        },
+        "required": [
+          "userId",
+          "role"
+        ]
+      },
+      "ProjectMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-member-1234"
+          },
+          "projectId": {
+            "type": "string",
+            "example": "uuid-project-1234"
+          },
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          },
+          "role": {
+            "type": "string",
+            "example": "LEAD_DEV"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "userId",
+          "role"
+        ]
+      },
+      "CreateTaskDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Implement login"
+          },
+          "description": {
+            "type": "string",
+            "example": "Implement the login flow using NestJS."
+          },
+          "budget": {
+            "type": "number",
+            "example": 500
+          },
+          "deadline": {
+            "type": "string",
+            "example": "2026-12-31T23:59:59Z"
+          },
+          "parentId": {
+            "type": "string",
+            "example": "parent-task-uuid"
+          }
+        },
+        "required": [
+          "title",
+          "description"
+        ]
+      },
+      "TaskResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "projectId": {
+            "type": "string",
+            "example": "uuid-project-1234"
+          },
+          "title": {
+            "type": "string",
+            "example": "Implement login"
+          },
+          "description": {
+            "type": "string",
+            "example": "Implement the login flow using NestJS."
+          },
+          "status": {
+            "type": "string",
+            "example": "PENDING"
+          },
+          "budget": {
+            "type": "number",
+            "example": 500
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "title",
+          "description",
+          "status",
+          "budget"
+        ]
+      },
+      "PaginatedTaskResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "UpdateTaskDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "IN_PROGRESS",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "REVIEW",
+              "DONE"
+            ]
+          },
+          "assigneeId": {
+            "type": "string",
+            "example": "uuid-of-assignee"
+          },
+          "description": {
+            "type": "string",
+            "example": "Updated description"
+          }
+        }
+      },
+      "CreateCommentDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "Looking good!"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "CommentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "content": {
+            "type": "string",
+            "example": "Looking good!"
+          },
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          }
+        },
+        "required": [
+          "id",
+          "content",
+          "userId"
+        ]
+      },
+      "LockFundDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "example": "task-uuid-123"
+          }
+        },
+        "required": [
+          "taskId"
+        ]
+      },
+      "Web3ResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "txHash": {
+            "type": "string",
+            "example": "0xlock_123456789"
+          },
+          "message": {
+            "type": "string",
+            "example": "Funds locked in Escrow"
+          }
+        },
+        "required": [
+          "success",
+          "txHash",
+          "message"
+        ]
+      },
+      "ApprovePayoutDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "example": "task-uuid-123"
+          }
+        },
+        "required": [
+          "taskId"
+        ]
+      },
+      "SyncTransactionDto": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string",
+            "example": "0x123abc456def789..."
+          },
+          "status": {
+            "type": "string",
+            "example": "COMPLETED",
+            "enum": [
+              "COMPLETED",
+              "FAILED"
+            ]
+          }
+        },
+        "required": [
+          "txHash",
+          "status"
+        ]
+      },
+      "SyncResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Transaction status updated to COMPLETED"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ]
+      },
+      "NotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          },
+          "message": {
+            "type": "string",
+            "example": "Your task has been approved."
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-07-30T10:00:00Z"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "message",
+          "isRead",
+          "createdAt"
+        ]
+      },
+      "PaginatedNotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "WebhookResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "success"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                  String         @id @default(uuid())
+  firstName           String?
+  lastName            String?
+  username            String?        @unique
+  nickname            String?
+  email               String         @unique
+  password            String?        // nullable for google oauth
+  googleId            String?        @unique
+  walletAddress       String?        @unique
+  encryptedPrivateKey String?
+  avatarUrl           String?
+  refreshToken        String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  profile             Profile?
+  bankAccount         BankAccount?
+  projects            Project[]      @relation("ProjectOwner")
+  applications        Application[]
+  tasks               Task[]         @relation("TaskAssignee")
+  comments            Comment[]
+  transactions        Transaction[]
+  notifications       Notification[]
+  projectMembers      ProjectMember[]
+  activityLogs        ActivityLog[]
+}
+
+model Profile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id])
+  title       String?  // e.g. "Software developer"
+  bio         String?
+  gender      String?
+  birthYear   Int?
+  contactInfo String?
+  experience  String?  // JSON stringified array or plain text
+  socialLinks String?  // JSON stringified object/array
+  cvs         String?  // JSON stringified array of {id, name, isPrimary, base64}
+  skills      String?  // JSON stringified array of skills
+  languages   String?  // JSON stringified array of languages/certs
+  githubUrl   String?
+  portfolioUrl String?
+  expectedRate Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id])
+  encryptedData String   // AES-256-GCM encrypted (e.g. account number, bank name)
+  maskedData    String   // e.g. **** 1234
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Project {
+  id             String        @id @default(uuid())
+  title          String
+  description    String
+  budget         Float         @default(0)
+  type           String        @default("PUBLIC") // PUBLIC, PRIVATE
+  status         String        @default("OPEN")   // OPEN, IN_PROGRESS, COMPLETED
+  companyName    String?
+  priority       String?       @default("Moderate")
+  positions      Int           @default(1)
+  skillsRequired String?       // JSON stringified array
+  deadline       DateTime?
+  isEscrowed     Boolean       @default(false)
+  escrowTxHash   String?
+  ownerId        String
+  owner          User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  applications Application[]
+  tasks        Task[]
+  members      ProjectMember[]
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      String   @default("DEV") // PM, LEAD_DEV, REVIEWER, DEV
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([projectId, userId])
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id])
+  title       String
+  description String
+  budget      Float     @default(0)
+  deadline    DateTime?
+  parentId    String?
+  parent      Task?     @relation("TaskHierarchy", fields: [parentId], references: [id])
+  children    Task[]    @relation("TaskHierarchy")
+  assigneeId  String?
+  assignee    User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  status      String    @default("OPEN") // OPEN, IN_PROGRESS, REVIEW, DONE
+  riskScore   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  comments    Comment[]
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  type          String   // DEPOSIT, WITHDRAW, LOCK, PAYOUT
+  amount        Float
+  currency      String   @default("USD")
+  bankAccountId String?
+  nonce         String?  @unique
+  txHash        String?
+  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  type      String   // RISK_ALERT, BALANCE_WARNING, SYSTEM
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model OtpCode {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  context   String   // e.g. REGISTER, WITHDRAW, DEPOSIT
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email, context])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   
+  details   String?  
+  createdAt DateTime @default(now())
+}
