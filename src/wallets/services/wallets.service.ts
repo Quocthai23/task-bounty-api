@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/encryption/encryption.service';
+import { AuditLogService } from '../../common/services/audit-log.service';
 import { UpdateBankAccountDto, DepositWithdrawDto } from '../dto/wallets.dto';
 import { ethers } from 'ethers';
 import { ConfigService } from '@nestjs/config';
@@ -11,6 +12,7 @@ export class WalletsService {
     private readonly prisma: PrismaService,
     private readonly encryption: EncryptionService,
     private readonly configService: ConfigService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async updateBankAccount(userId: string, dto: UpdateBankAccountDto) {
@@ -82,6 +84,10 @@ export class WalletsService {
 
     const transferMemo = `${user?.id.substring(0, 8).toUpperCase()}`;
     const qrUrl = `https://img.vietqr.io/image/970415-113366668888-compact.png?amount=${dto.amount}&addInfo=${transferMemo}&accountName=TASK BOUNTY`;
+    
+    // Constructing a simplified mock raw QR string for VietQR (for qrcode.react)
+    // In production, use a library like vietqr to generate the exact EMVCo string
+    const rawQrString = `00020101021238540010A0000007270128000697041501121133666688880208QRIBFTTA5303704540${String(dto.amount).length}${dto.amount}5802VN62${transferMemo.length + 4}08${transferMemo.length < 10 ? '0'+transferMemo.length : transferMemo.length}${transferMemo}6304XXXX`;
 
     return {
       transaction: tx,
@@ -90,7 +96,8 @@ export class WalletsService {
         accountNumber: '113366668888',
         accountName: 'TASK BOUNTY',
         transferMemo: transferMemo,
-        qrCodeUrl: qrUrl
+        qrCodeUrl: qrUrl,
+        qrCodeData: rawQrString
       }
     };
   }
@@ -167,10 +174,6 @@ export class WalletsService {
   }
 
   async handleWebhookProcessing(payload: any) {
-    // Expected payload from fiat-bridge e.g. { event: 'DEPOSIT_CONFIRMED', txHash: '...', userId: '...', amount: 100 }
-    // Or for withdrawals { event: 'PAYOUT_CONFIRMED', txHash: '...', amount: 100, bankAccountId: '...' }
-    
-    // In our simplified mock, we'll just look for a pending transaction for a user and mark it COMPLETED
     if (payload.userId && payload.amount) {
       const pendingTx = await this.prisma.transaction.findFirst({
         where: {
@@ -185,6 +188,14 @@ export class WalletsService {
         await this.prisma.transaction.update({
           where: { id: pendingTx.id },
           data: { status: 'COMPLETED', txHash: payload.txHash || pendingTx.txHash }
+        });
+
+        // Audit Log appending
+        await this.auditLog.logAction(payload.userId, 'TRANSACTION_COMPLETED', {
+          transactionId: pendingTx.id,
+          type: pendingTx.type,
+          amount: pendingTx.amount,
+          txHash: payload.txHash
         });
       }
     }

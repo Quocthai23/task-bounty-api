@@ -1,4 +1,6 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Put, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Put, UseGuards, Request, Res } from '@nestjs/common';
+import { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../services/auth.service';
 import { RegisterDto, LoginDto, ChangePasswordDto, AuthResponseDto, MessageResponseDto, RefreshTokenDto, SendOtpDto, VerifyOtpDto, ChallengeResponseDto } from '../dto/auth.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
@@ -9,8 +11,19 @@ import { AuthGuard } from '../guards/auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  private setCookies(res: Response, accessToken: string, refreshToken: string) {
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+    };
+    if (accessToken) res.cookie('access_token', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15m
+    if (refreshToken) res.cookie('refresh_token', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7d
+  }
+
   @ApiOperation({ summary: 'Send OTP for a specific context (e.g. REGISTER, WITHDRAW)' })
   @ApiResponse({ status: 201, description: 'OTP sent to email.', type: MessageResponseDto })
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // Max 3 per minute
   @Post('send-otp')
   async sendOtp(@Body() dto: SendOtpDto) {
     return this.authService.sendOtp(dto);
@@ -28,8 +41,10 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'User successfully registered.', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Bad Request - Email already in use or validation error' })
   @Post('register')
-  async register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.register(dto);
+    this.setCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @ApiOperation({ summary: 'Login and get tokens' })
@@ -37,16 +52,21 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid credentials' })
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.login(dto);
+    this.setCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @ApiOperation({ summary: 'Refresh access token' })
   @ApiResponse({ status: 200, description: 'Tokens successfully refreshed.', type: AuthResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or expired refresh token' })
   @Post('refresh')
-  async refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto.refreshToken);
+  async refresh(@Request() req: any, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
+    const token = req.cookies?.refresh_token || dto.refreshToken;
+    const result = await this.authService.refreshToken(token);
+    this.setCookies(res, result.accessToken, result.refreshToken);
+    return result;
   }
 
   @ApiBearerAuth()
@@ -54,7 +74,9 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Logged out successfully.', type: MessageResponseDto })
   @UseGuards(AuthGuard)
   @Post('logout')
-  async logout(@Request() req: any) {
+  async logout(@Request() req: any, @Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token');
+    res.clearCookie('refresh_token');
     return this.authService.logout(req.user.sub);
   }
 
