@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  fiat-bridge:
+    image: quocthai23/fiat-bridge:latest
+    container_name: fiat-bridge
+    ports:
+      - "8080:8080"
+    environment:
+      - BRIDGE_PORT=8080
+      - RPC_URL=https://rpc.ankr.com/eth_sepolia # Placeholder network
+      - CHAIN_ID=11155111
+      - CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000 # Placeholder
+      - ADMIN_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000000 # Placeholder
+      - BANK_PAYOUT_API=http://host.docker.internal:3000/api/wallets/payout-webhook
+      - HMAC_SECRET=my-super-secret-hmac-key
+    restart: unless-stopped
