@@ -166,6 +166,30 @@ export class WalletsService {
     };
   }
 
+  async handleWebhookProcessing(payload: any) {
+    // Expected payload from fiat-bridge e.g. { event: 'DEPOSIT_CONFIRMED', txHash: '...', userId: '...', amount: 100 }
+    // Or for withdrawals { event: 'PAYOUT_CONFIRMED', txHash: '...', amount: 100, bankAccountId: '...' }
+    
+    // In our simplified mock, we'll just look for a pending transaction for a user and mark it COMPLETED
+    if (payload.userId && payload.amount) {
+      const pendingTx = await this.prisma.transaction.findFirst({
+        where: {
+          userId: payload.userId,
+          status: 'PENDING',
+          amount: payload.amount
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (pendingTx) {
+        await this.prisma.transaction.update({
+          where: { id: pendingTx.id },
+          data: { status: 'COMPLETED', txHash: payload.txHash || pendingTx.txHash }
+        });
+      }
+    }
+  }
+
   private async ensureUniqueNonce(nonce: string) {
     const existing = await this.prisma.transaction.findUnique({ where: { nonce } });
     if (existing) {
