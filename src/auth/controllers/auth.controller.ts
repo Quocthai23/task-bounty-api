@@ -1,10 +1,12 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, Put, UseGuards, Request, Res } from '@nestjs/common';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from '../services/auth.service';
 import { RegisterDto, LoginDto, ChangePasswordDto, AuthResponseDto, MessageResponseDto, RefreshTokenDto, SendOtpDto, VerifyOtpDto, ChallengeResponseDto } from '../dto/auth.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiHeader } from '@nestjs/swagger';
 import { AuthGuard } from '../guards/auth.guard';
+import { ChallengeOtpGuard } from '../guards/challenge-otp.guard';
+import { RequireChallenge } from '../decorators/require-challenge.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -38,12 +40,15 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Register a new user' })
+  @ApiHeader({ name: 'x-challenge-token', required: true, description: 'Challenge Token obtained from /auth/verify-otp' })
   @ApiResponse({ status: 201, description: 'User successfully registered.', type: AuthResponseDto })
   @ApiResponse({ status: 400, description: 'Bad Request - Email already in use or validation error' })
+  @RequireChallenge('REGISTER')
+  @UseGuards(ChallengeOtpGuard)
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.register(dto);
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.setCookies(res, result.access_token, result.refresh_token);
     return result;
   }
 
@@ -54,7 +59,7 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto);
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.setCookies(res, result.access_token, result.refresh_token);
     return result;
   }
 
@@ -65,7 +70,7 @@ export class AuthController {
   async refresh(@Request() req: any, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
     const token = req.cookies?.refresh_token || dto.refreshToken;
     const result = await this.authService.refreshToken(token);
-    this.setCookies(res, result.accessToken, result.refreshToken);
+    this.setCookies(res, result.access_token, result.refresh_token);
     return result;
   }
 

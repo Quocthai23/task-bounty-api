@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class ProfileService {
@@ -20,6 +22,52 @@ export class ProfileService {
     return { ...user, profile };
   }
 
+  async getPublicProfileByUsername(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        username: true,
+        avatarUrl: true,
+        createdAt: true,
+        profile: true,
+      }
+    });
+
+    if (!user) return null;
+
+    // Get completed jobs as applicant (where they are DEV and project is COMPLETED or CLOSED)
+    const completedJobsAsDev = await this.prisma.projectMember.count({
+      where: {
+        userId: user.id,
+        role: 'DEV',
+        project: {
+          status: { in: ['COMPLETED', 'CLOSED'] }
+        }
+      }
+    });
+
+    // Get completed projects as PM
+    const completedJobsAsPm = await this.prisma.project.count({
+      where: {
+        ownerId: user.id,
+        status: { in: ['COMPLETED', 'CLOSED'] }
+      }
+    });
+
+    return {
+      ...user,
+      stats: {
+        completedJobsAsDev,
+        completedJobsAsPm,
+        totalJobs: completedJobsAsDev + completedJobsAsPm,
+        rating: 4.8 // Mock rating for MVP
+      }
+    };
+  }
+
   async getHistory(userId: string, startDate?: string, endDate?: string) {
     const whereClause: any = { userId };
     if (startDate || endDate) {
@@ -34,7 +82,28 @@ export class ProfileService {
   }
 
   async updateBasicInfo(userId: string, data: any) {
-    const { firstName, lastName, nickname, avatarUrl, gender, title, experience, skills, githubUrl, portfolioUrl, languages, expectedRate } = data;
+    let { firstName, lastName, nickname, avatarUrl, gender, title, experience, skills, githubUrl, portfolioUrl, languages, expectedRate } = data;
+    
+    if (avatarUrl && avatarUrl.startsWith('data:image')) {
+      const matches = avatarUrl.match(/^data:image\/([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const ext = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+        const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'avatars');
+        
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        
+        const fileName = `${userId}-${Date.now()}.${ext}`;
+        const filePath = path.join(uploadDir, fileName);
+        fs.writeFileSync(filePath, buffer);
+        
+        avatarUrl = `http://localhost:3000/uploads/avatars/${fileName}`;
+      }
+    }
+
     await this.prisma.user.update({
       where: { id: userId },
       data: { firstName, lastName, nickname, avatarUrl },

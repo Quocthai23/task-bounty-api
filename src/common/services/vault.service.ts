@@ -1,14 +1,14 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
-import * as nodeVault from 'node-vault';
+import vault = require('node-vault');
 
 @Injectable()
 export class VaultService implements OnModuleInit {
   private readonly logger = new Logger(VaultService.name);
-  private vaultClient: nodeVault.client;
+  private vaultClient: vault.client;
   private adminPrivateKey: string;
 
   constructor() {
-    this.vaultClient = nodeVault({
+    this.vaultClient = vault({
       apiVersion: 'v1',
       endpoint: process.env.VAULT_ADDR || 'http://localhost:8200',
       token: process.env.VAULT_TOKEN || 'myroot',

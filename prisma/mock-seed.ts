@@ -83,6 +83,7 @@ async function main() {
     }
   ];
 
+  await prisma.projectMember.deleteMany({});
   await prisma.project.deleteMany({});
   console.log('Cleared existing projects');
 

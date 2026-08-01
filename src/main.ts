@@ -4,10 +4,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
 import * as express from 'express';
-import * as cookieParser from 'cookie-parser';
+import cookieParser = require('cookie-parser');
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  app.setGlobalPrefix('api');
   
   app.use(cookieParser());
   app.enableCors({
@@ -16,7 +17,10 @@ async function bootstrap() {
   });
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
+  
+  // Serve static files for MVP uploads
+  const path = require('path');
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
   // Global Validation Pipe
   app.useGlobalPipes(
     new ValidationPipe({
@@ -46,11 +50,11 @@ This platform provides real-time updates via Socket.io.
     .build();
   
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api-docs', app, document);
 
   // Write Swagger JSON spec to file
+  // Write Swagger JSON spec to file
   const fs = require('fs');
-  const path = require('path');
   fs.writeFileSync(
     path.join(__dirname, '..', 'swagger-spec.json'),
     JSON.stringify(document, null, 2),
@@ -60,6 +64,6 @@ This platform provides real-time updates via Socket.io.
   const port = process.env.PORT || 3000;
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger docs at: http://localhost:${port}/api`);
+  console.log(`Swagger docs at: http://localhost:${port}/api-docs`);
 }
 bootstrap();
