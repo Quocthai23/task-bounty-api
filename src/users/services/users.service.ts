@@ -46,13 +46,41 @@ export class UsersService {
   async getPublicProfile(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { profile: true },
+      include: { 
+        profile: true,
+        projectMembers: {
+          include: {
+            project: {
+              select: { id: true, title: true, type: true, status: true, budget: true, currency: true, createdAt: true }
+            }
+          }
+        },
+        tasks: {
+          where: { status: 'DONE' },
+          select: { id: true, title: true, budget: true, status: true, updatedAt: true }
+        }
+      },
     });
     if (!user) throw new NotFoundException('User not found');
     
+    const completedTasks = user.tasks || [];
+    const projects = user.projectMembers?.map(pm => pm.project) || [];
+
     return {
       id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
       profile: user.profile,
+      projects,
+      completedTasks,
+      stats: {
+        totalJobs: completedTasks.length + projects.length,
+        completedTasks: completedTasks.length,
+        joinedProjects: projects.length,
+        rating: 5.0,
+      }
     };
   }
 }

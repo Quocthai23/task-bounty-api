@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/": {
+    "/api": {
       "get": {
         "operationId": "AppController_getHello",
         "parameters": [],
@@ -15,7 +15,7 @@
         ]
       }
     },
-    "/auth/send-otp": {
+    "/api/auth/send-otp": {
       "post": {
         "operationId": "AuthController_sendOtp",
         "parameters": [],
@@ -47,7 +47,7 @@
         ]
       }
     },
-    "/auth/verify-otp": {
+    "/api/auth/verify-otp": {
       "post": {
         "operationId": "AuthController_verifyOtp",
         "parameters": [],
@@ -82,10 +82,20 @@
         ]
       }
     },
-    "/auth/register": {
+    "/api/auth/register": {
       "post": {
         "operationId": "AuthController_register",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "x-challenge-token",
+            "in": "header",
+            "description": "Challenge Token obtained from /auth/verify-otp",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -117,7 +127,7 @@
         ]
       }
     },
-    "/auth/login": {
+    "/api/auth/login": {
       "post": {
         "operationId": "AuthController_login",
         "parameters": [],
@@ -152,7 +162,7 @@
         ]
       }
     },
-    "/auth/refresh": {
+    "/api/auth/refresh": {
       "post": {
         "operationId": "AuthController_refresh",
         "parameters": [],
@@ -187,7 +197,7 @@
         ]
       }
     },
-    "/auth/logout": {
+    "/api/auth/logout": {
       "post": {
         "operationId": "AuthController_logout",
         "parameters": [],
@@ -214,7 +224,7 @@
         ]
       }
     },
-    "/auth/change-password": {
+    "/api/auth/change-password": {
       "put": {
         "operationId": "AuthController_changePassword",
         "parameters": [],
@@ -257,7 +267,7 @@
         ]
       }
     },
-    "/users/me": {
+    "/api/users/me": {
       "get": {
         "operationId": "UsersController_getMe",
         "parameters": [],
@@ -290,7 +300,7 @@
         ]
       }
     },
-    "/users/profile": {
+    "/api/users/profile": {
       "put": {
         "operationId": "UsersController_updateProfile",
         "parameters": [],
@@ -330,7 +340,7 @@
         ]
       }
     },
-    "/users/public-profile/{id}": {
+    "/api/users/public-profile/{id}": {
       "get": {
         "operationId": "UsersController_getPublicProfile",
         "parameters": [
@@ -364,7 +374,91 @@
         ]
       }
     },
-    "/wallets/bank-account": {
+    "/api/wallets/exchange-rates": {
+      "get": {
+        "operationId": "WalletsController_getExchangeRates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Live exchange rates dictionary."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get live exchange rates from European Central Bank (Frankfurter API)",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/wallets/quote": {
+      "post": {
+        "operationId": "WalletsController_createQuote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Guaranteed exchange rate quote.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteDetailsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a 15-Minute Guaranteed Exchange Rate Quote for Cross-Currency Remittance",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/wallets/treasury": {
+      "get": {
+        "operationId": "WalletsController_getTreasuryStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Treasury status and liquidity health alert.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreasuryStatusResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get Treasury liquidity balance and reserves status",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/wallets/bank-account": {
       "put": {
         "operationId": "WalletsController_updateBankAccount",
         "parameters": [],
@@ -435,7 +529,7 @@
         ]
       }
     },
-    "/wallets/balance": {
+    "/api/wallets/balance": {
       "get": {
         "operationId": "WalletsController_getBalance",
         "parameters": [],
@@ -465,20 +559,10 @@
         ]
       }
     },
-    "/wallets/deposit": {
+    "/api/wallets/deposit": {
       "post": {
         "operationId": "WalletsController_deposit",
-        "parameters": [
-          {
-            "name": "x-challenge-token",
-            "in": "header",
-            "description": "Challenge Token obtained from /auth/verify-otp",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -512,26 +596,16 @@
             "bearer": []
           }
         ],
-        "summary": "Deposit Fiat via Mock Stripe",
+        "summary": "Deposit Fiat via PayOS",
         "tags": [
           "Wallets"
         ]
       }
     },
-    "/wallets/withdraw": {
+    "/api/wallets/withdraw": {
       "post": {
         "operationId": "WalletsController_withdraw",
-        "parameters": [
-          {
-            "name": "x-challenge-token",
-            "in": "header",
-            "description": "Challenge Token obtained from /auth/verify-otp",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -565,13 +639,13 @@
             "bearer": []
           }
         ],
-        "summary": "Withdraw Fiat via Mock Stripe",
+        "summary": "Withdraw Fiat or Crypto to bank/wallet (Supports Cross-Currency Remittance)",
         "tags": [
           "Wallets"
         ]
       }
     },
-    "/wallets/transactions": {
+    "/api/wallets/transactions": {
       "get": {
         "operationId": "WalletsController_getTransactions",
         "parameters": [
@@ -622,7 +696,243 @@
         ]
       }
     },
-    "/projects": {
+    "/api/wallets/grant-credit": {
+      "post": {
+        "operationId": "WalletsController_grantCredit",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantCreditDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Credit granted successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Grant promotional or system credit (Admin / Internal)",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/wallets/swap": {
+      "post": {
+        "operationId": "WalletsController_swap",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwapCurrencyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Currency swapped successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Swap / Quy đổi ngoại tệ tức thì giữa các số dư (Web2 Custodial)",
+        "tags": [
+          "Wallets"
+        ]
+      }
+    },
+    "/api/wallets/payout-webhook": {
+      "post": {
+        "operationId": "WalletsWebhookController_handlePayoutWebhook",
+        "parameters": [
+          {
+            "name": "x-signature",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Receive webhook from fiat-bridge to confirm deposits or withdrawals",
+        "tags": [
+          "Wallets Webhook"
+        ]
+      }
+    },
+    "/api/wallets/payos-webhook": {
+      "post": {
+        "operationId": "WalletsWebhookController_handlePayOSWebhook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Receive webhook from PayOS for deposits",
+        "tags": [
+          "Wallets Webhook"
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "operationId": "NotificationsController_getNotifications",
+        "parameters": [
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return a list of notifications.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedNotificationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get unified notifications & activity history",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/notifications/scan-deadlines": {
+      "get": {
+        "operationId": "NotificationsController_scanDeadlines",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Scan active deadlines and generate notifications",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "put": {
+        "operationId": "NotificationsController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a notification as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "put": {
+        "operationId": "NotificationsController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/projects": {
       "post": {
         "operationId": "ProjectsController_create",
         "parameters": [],
@@ -638,20 +948,7 @@
         },
         "responses": {
           "201": {
-            "description": "Project created.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
+            "description": "Project created."
           }
         },
         "security": [
@@ -659,7 +956,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a new project",
+        "summary": "Create a new project / job",
         "tags": [
           "Projects"
         ]
@@ -669,22 +966,42 @@
         "parameters": [
           {
             "name": "page",
-            "required": false,
+            "required": true,
             "in": "query",
             "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
+              "type": "string"
             }
           },
           {
             "name": "limit",
-            "required": false,
+            "required": true,
             "in": "query",
             "schema": {
-              "minimum": 1,
-              "default": 10,
-              "type": "number"
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "minBudget",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "maxBudget",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -700,13 +1017,53 @@
             }
           }
         },
-        "summary": "Get all projects",
+        "summary": "Get all public projects",
         "tags": [
           "Projects"
         ]
       }
     },
-    "/projects/{id}": {
+    "/api/projects/joined": {
+      "get": {
+        "operationId": "ProjectsController_getJoinedProjects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of joined projects."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get projects joined by current user",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/owned": {
+      "get": {
+        "operationId": "ProjectsController_getOwnedProjects",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of managed projects."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get projects created or managed by current user (PM / Owner)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/{id}": {
       "get": {
         "operationId": "ProjectsController_findOne",
         "parameters": [
@@ -721,17 +1078,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Project details.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectResponseDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found"
+            "description": "Project details."
           }
         },
         "summary": "Get a single project by ID",
@@ -751,25 +1098,19 @@
             }
           }
         ],
-        "responses": {
-          "200": {
-            "description": "Project updated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProjectResponseDto"
-                }
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectDto"
               }
             }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden - Not your project"
-          },
-          "404": {
-            "description": "Not Found"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project updated."
           }
         },
         "security": [
@@ -777,13 +1118,146 @@
             "bearer": []
           }
         ],
-        "summary": "Update a project",
+        "summary": "Update a project (PM / Owner only - Budget locks if applicants exist)",
         "tags": [
           "Projects"
         ]
       }
     },
-    "/projects/{id}/applications": {
+    "/api/projects/{id}/members/email": {
+      "post": {
+        "operationId": "ProjectsController_addMemberByEmail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberByEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Member added."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a project member directly by email (PM / Owner only)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/{id}/members/{memberId}/permissions": {
+      "put": {
+        "operationId": "ProjectsController_updateMemberPermissions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberPermissionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Permissions updated."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update member permissions (e.g. CAN_CREATE_TASK, CAN_MOVE_DONE)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/{id}/members/{memberId}/reward": {
+      "post": {
+        "operationId": "ProjectsController_rewardMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bonus granted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reward standout member with instant bonus (PM / Owner only)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/{id}/applications": {
       "post": {
         "operationId": "ProjectsController_apply",
         "parameters": [
@@ -796,12 +1270,19 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyProjectDto"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Application submitted."
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         },
         "security": [
@@ -829,12 +1310,6 @@
         "responses": {
           "200": {
             "description": "List of applications."
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden - Not your project"
           }
         },
         "security": [
@@ -842,13 +1317,13 @@
             "bearer": []
           }
         ],
-        "summary": "Get applications for a project (Owner only)",
+        "summary": "Get applications with full applicant profiles (PM / Owner only)",
         "tags": [
           "Projects"
         ]
       }
     },
-    "/projects/{id}/applications/{appId}": {
+    "/api/projects/{id}/applications/{appId}": {
       "put": {
         "operationId": "ProjectsController_processApplication",
         "parameters": [
@@ -872,12 +1347,6 @@
         "responses": {
           "200": {
             "description": "Application processed."
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden - Not your project"
           }
         },
         "security": [
@@ -885,13 +1354,13 @@
             "bearer": []
           }
         ],
-        "summary": "Process an application (Owner only)",
+        "summary": "Process an application (APPROVE / REJECT) (PM / Owner only)",
         "tags": [
           "Projects"
         ]
       }
     },
-    "/projects/{id}/members": {
+    "/api/projects/{id}/members": {
       "post": {
         "operationId": "ProjectsController_assignRole",
         "parameters": [
@@ -924,12 +1393,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden - Only PM or Owner can assign roles"
           }
         },
         "security": [
@@ -943,7 +1406,7 @@
         ]
       }
     },
-    "/projects/{projectId}/tasks": {
+    "/api/projects/{projectId}/tasks": {
       "post": {
         "operationId": "TasksController_create",
         "parameters": [
@@ -1044,7 +1507,7 @@
         ]
       }
     },
-    "/tasks/public": {
+    "/api/tasks/public": {
       "get": {
         "operationId": "TasksController_getPublicTasks",
         "parameters": [
@@ -1087,7 +1550,7 @@
         ]
       }
     },
-    "/tasks/joined": {
+    "/api/tasks/joined": {
       "get": {
         "operationId": "TasksController_getJoinedTasks",
         "parameters": [
@@ -1135,7 +1598,7 @@
         ]
       }
     },
-    "/tasks/{id}": {
+    "/api/tasks/{id}": {
       "put": {
         "operationId": "TasksController_update",
         "parameters": [
@@ -1173,7 +1636,7 @@
             "description": "Unauthorized"
           },
           "403": {
-            "description": "Forbidden - Insufficient permissions to mark DONE"
+            "description": "Forbidden - Insufficient permissions"
           },
           "404": {
             "description": "Not Found"
@@ -1190,7 +1653,7 @@
         ]
       }
     },
-    "/tasks/{id}/comments": {
+    "/api/tasks/{id}/comments": {
       "post": {
         "operationId": "TasksController_addComment",
         "parameters": [
@@ -1223,12 +1686,6 @@
                 }
               }
             }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
           }
         },
         "security": [
@@ -1255,26 +1712,93 @@
         ],
         "responses": {
           "200": {
-            "description": "List of comments.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/CommentResponseDto"
-                  }
-                }
-              }
-            }
+            "description": "List of comments."
           }
         },
-        "summary": "Get all comments for a task",
+        "summary": "Get comments for a task",
         "tags": [
           "Tasks"
         ]
       }
     },
-    "/bounty/lock-fund": {
+    "/api/tasks/history": {
+      "get": {
+        "operationId": "TasksController_getTaskHistory",
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of task history activities"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get task activity logs and history across projects",
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/api/bounty/lock-fund": {
       "post": {
         "operationId": "Web3Controller_lockFund",
         "parameters": [],
@@ -1320,7 +1844,7 @@
         ]
       }
     },
-    "/bounty/approve-payout": {
+    "/api/bounty/approve-payout": {
       "post": {
         "operationId": "Web3Controller_approvePayout",
         "parameters": [],
@@ -1366,7 +1890,7 @@
         ]
       }
     },
-    "/bounty/sync": {
+    "/api/bounty/sync": {
       "post": {
         "operationId": "Web3Controller_syncTransaction",
         "parameters": [],
@@ -1401,55 +1925,7 @@
         ]
       }
     },
-    "/notifications": {
-      "get": {
-        "operationId": "NotificationsController_getNotifications",
-        "parameters": [
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 1,
-              "type": "number"
-            }
-          },
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "minimum": 1,
-              "default": 10,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Return a list of notifications.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedNotificationResponseDto"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get user notifications history",
-        "tags": [
-          "Notifications"
-        ]
-      }
-    },
-    "/webhooks/github": {
+    "/api/webhooks/github": {
       "post": {
         "operationId": "WebhooksController_handleGithubWebhook",
         "parameters": [
@@ -1488,7 +1964,7 @@
         ]
       }
     },
-    "/webhooks/gitlab": {
+    "/api/webhooks/gitlab": {
       "post": {
         "operationId": "WebhooksController_handleGitlabWebhook",
         "parameters": [
@@ -1527,22 +2003,22 @@
         ]
       }
     },
-    "/metadata/skills": {
+    "/api/metadata/skills": {
       "get": {
         "operationId": "MetadataController_getSkills",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "List of skills."
+            "description": "List of dynamic skills."
           }
         },
-        "summary": "Get all predefined skills",
+        "summary": "Get all dynamic skills extracted from DB and projects",
         "tags": [
           "Metadata"
         ]
       }
     },
-    "/metadata/positions": {
+    "/api/metadata/positions": {
       "get": {
         "operationId": "MetadataController_getPositions",
         "parameters": [],
@@ -1551,9 +2027,192 @@
             "description": "List of positions."
           }
         },
-        "summary": "Get all predefined positions",
+        "summary": "Get all dynamic positions extracted from DB",
         "tags": [
           "Metadata"
+        ]
+      }
+    },
+    "/api/metadata/budget-ranges": {
+      "get": {
+        "operationId": "MetadataController_getBudgetRanges",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Budget range and presets."
+          }
+        },
+        "summary": "Get dynamic budget ranges and presets based on active projects",
+        "tags": [
+          "Metadata"
+        ]
+      }
+    },
+    "/api/profile/me": {
+      "get": {
+        "operationId": "ProfileController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      },
+      "put": {
+        "operationId": "ProfileController_updateBasicInfo",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/history": {
+      "get": {
+        "operationId": "ProfileController_getHistory",
+        "parameters": [
+          {
+            "name": "startDate",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/me/bio": {
+      "put": {
+        "operationId": "ProfileController_updateBio",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/me/socials": {
+      "put": {
+        "operationId": "ProfileController_updateSocials",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/me/cv": {
+      "post": {
+        "operationId": "ProfileController_uploadCv",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/me/cv/{id}": {
+      "delete": {
+        "operationId": "ProfileController_deleteCv",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/me/cv/{id}/primary": {
+      "put": {
+        "operationId": "ProfileController_setPrimaryCv",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Profile"
+        ]
+      }
+    },
+    "/api/profile/public/{username}": {
+      "get": {
+        "operationId": "PublicProfileController_getPublicProfile",
+        "parameters": [
+          {
+            "name": "username",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicProfile"
         ]
       }
     }
@@ -1850,6 +2509,131 @@
           "walletAddress"
         ]
       },
+      "CreateQuoteDto": {
+        "type": "object",
+        "properties": {
+          "sourceCurrency": {
+            "type": "string",
+            "example": "USD",
+            "description": "Đồng tiền nguồn cần đổi/rút (vd: USD, EUR, JPY, CNY)"
+          },
+          "targetCurrency": {
+            "type": "string",
+            "example": "VND",
+            "description": "Đồng tiền đích nhận về (vd: VND)"
+          },
+          "amount": {
+            "type": "number",
+            "example": 1000,
+            "description": "Số lượng đồng tiền nguồn cần rút"
+          }
+        },
+        "required": [
+          "sourceCurrency",
+          "targetCurrency",
+          "amount"
+        ]
+      },
+      "QuoteDetailsResponseDto": {
+        "type": "object",
+        "properties": {
+          "quoteId": {
+            "type": "string",
+            "example": "quote-uuid-1234"
+          },
+          "sourceCurrency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "targetCurrency": {
+            "type": "string",
+            "example": "VND"
+          },
+          "sourceAmount": {
+            "type": "number",
+            "example": 1000
+          },
+          "targetAmount": {
+            "type": "number",
+            "example": 25450000
+          },
+          "exchangeRate": {
+            "type": "number",
+            "example": 25450
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-08-02T15:45:00.000Z"
+          },
+          "ttlSeconds": {
+            "type": "number",
+            "example": 900
+          }
+        },
+        "required": [
+          "quoteId",
+          "sourceCurrency",
+          "targetCurrency",
+          "sourceAmount",
+          "targetAmount",
+          "exchangeRate",
+          "expiresAt",
+          "ttlSeconds"
+        ]
+      },
+      "TreasuryStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalUsdInflow": {
+            "type": "number",
+            "example": 125000,
+            "description": "Tổng USD nạp vào hệ thống (USD Inflow)"
+          },
+          "totalVndOutflow": {
+            "type": "number",
+            "example": 1550000000,
+            "description": "Tổng VND đã giải ngân cho Dev (VND Outflow)"
+          },
+          "netVndReserve": {
+            "type": "number",
+            "example": 450000000,
+            "description": "Số dư quỹ dự trữ VND còn lại trong ngân hàng giải ngân"
+          },
+          "netUsdReserve": {
+            "type": "number",
+            "example": 64000,
+            "description": "Số dư quỹ USD tích lũy tại tài khoản quốc tế"
+          },
+          "liquidityStatus": {
+            "type": "string",
+            "example": "HEALTHY",
+            "enum": [
+              "HEALTHY",
+              "WARNING_LOW_LIQUIDITY",
+              "CRITICAL"
+            ]
+          },
+          "liquidityAlertThresholdVnd": {
+            "type": "number",
+            "example": 100000000,
+            "description": "Ngưỡng cảnh báo thanh khoản VND tối thiểu"
+          },
+          "rebalanceRecommended": {
+            "type": "boolean",
+            "example": false,
+            "description": "Cảnh báo Admin cần thực hiện tái cân bằng quỹ ngoài đời"
+          }
+        },
+        "required": [
+          "totalUsdInflow",
+          "totalVndOutflow",
+          "netVndReserve",
+          "netUsdReserve",
+          "liquidityStatus",
+          "liquidityAlertThresholdVnd",
+          "rebalanceRecommended"
+        ]
+      },
       "UpdateBankAccountDto": {
         "type": "object",
         "properties": {
@@ -1884,7 +2668,37 @@
         "properties": {
           "balance": {
             "type": "number",
-            "example": 1050.5
+            "example": 550000,
+            "description": "Total available balance (onChain + systemCredit)"
+          },
+          "onChainBalance": {
+            "type": "number",
+            "example": 500000,
+            "description": "Verified On-Chain token balance (Withdrawable)"
+          },
+          "systemCredit": {
+            "type": "number",
+            "example": 50000,
+            "description": "System bonus / Promo credit (Non-withdrawable)"
+          },
+          "lockedEscrow": {
+            "type": "number",
+            "example": 0,
+            "description": "Amount locked in escrow"
+          },
+          "balances": {
+            "type": "object",
+            "example": {
+              "VND": 500000,
+              "USD": 100,
+              "EUR": 50,
+              "JPY": 10000,
+              "CNY": 200
+            }
+          },
+          "breakdown": {
+            "type": "object",
+            "description": "Detailed breakdown per currency"
           }
         },
         "required": [
@@ -1909,6 +2723,33 @@
           "bankAccountId": {
             "type": "string",
             "example": "bank-account-uuid"
+          },
+          "method": {
+            "type": "string",
+            "example": "WALLET",
+            "enum": [
+              "BANK",
+              "WALLET"
+            ]
+          },
+          "targetAddress": {
+            "type": "string",
+            "example": "0x1234567890123456789012345678901234567890"
+          },
+          "quoteId": {
+            "type": "string",
+            "example": "quote-uuid-1234",
+            "description": "Mã báo giá khóa tỷ giá 15 phút cho giao dịch Cross-Currency"
+          },
+          "sourceCurrency": {
+            "type": "string",
+            "example": "USD",
+            "description": "Loại tiền nguồn bị trừ/burn"
+          },
+          "targetCurrency": {
+            "type": "string",
+            "example": "VND",
+            "description": "Loại tiền đích nhận về tài khoản ngân hàng"
           }
         },
         "required": [
@@ -2000,6 +2841,115 @@
           "meta"
         ]
       },
+      "GrantCreditDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          },
+          "amount": {
+            "type": "number",
+            "example": 50000
+          },
+          "currency": {
+            "type": "string",
+            "example": "VND"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Signup bonus promotional credit"
+          }
+        },
+        "required": [
+          "userId",
+          "amount"
+        ]
+      },
+      "SwapCurrencyDto": {
+        "type": "object",
+        "properties": {
+          "sourceCurrency": {
+            "type": "string",
+            "example": "USD",
+            "description": "Loại tiền tệ nguồn cần đổi"
+          },
+          "targetCurrency": {
+            "type": "string",
+            "example": "VND",
+            "description": "Loại tiền tệ đích nhận về"
+          },
+          "amount": {
+            "type": "number",
+            "example": 100,
+            "description": "Số lượng tiền nguồn cần đổi"
+          },
+          "quoteId": {
+            "type": "string",
+            "example": "quote-uuid-1234",
+            "description": "Mã báo giá khóa tỷ giá 15 phút"
+          },
+          "nonce": {
+            "type": "string",
+            "example": "nonce-uuid-1234"
+          }
+        },
+        "required": [
+          "sourceCurrency",
+          "targetCurrency",
+          "amount"
+        ]
+      },
+      "NotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid-1234"
+          },
+          "userId": {
+            "type": "string",
+            "example": "uuid-user-1234"
+          },
+          "message": {
+            "type": "string",
+            "example": "Your task has been approved."
+          },
+          "isRead": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-07-30T10:00:00Z"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "message",
+          "isRead",
+          "createdAt"
+        ]
+      },
+      "PaginatedNotificationResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationResponseDto"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMetaDto"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "CreateProjectDto": {
         "type": "object",
         "properties": {
@@ -2015,20 +2965,57 @@
             "type": "number",
             "example": 1000
           },
+          "currency": {
+            "type": "string",
+            "example": "USD",
+            "default": "USD"
+          },
           "type": {
             "type": "string",
             "example": "PUBLIC",
             "enum": [
               "PUBLIC",
               "PRIVATE"
-            ]
+            ],
+            "default": "PUBLIC"
+          },
+          "maxMembers": {
+            "type": "number",
+            "example": 5,
+            "default": 5
+          },
+          "positions": {
+            "type": "number",
+            "example": 5
+          },
+          "isRecruiting": {
+            "type": "boolean",
+            "example": true,
+            "default": true
+          },
+          "skillsRequired": {
+            "type": "string",
+            "example": "[\"React\", \"Solidity\", \"Node.js\"]"
+          },
+          "deadline": {
+            "type": "string",
+            "example": "2026-12-31T23:59:59Z"
+          },
+          "initialMemberEmails": {
+            "example": [
+              "dev1@gmail.com",
+              "dev2@gmail.com"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "title",
           "description",
-          "budget",
-          "type"
+          "budget"
         ]
       },
       "ProjectResponseDto": {
@@ -2096,6 +3083,131 @@
           "meta"
         ]
       },
+      "UpdateProjectDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "DeFi Dashboard"
+          },
+          "description": {
+            "type": "string",
+            "example": "A dashboard to track DeFi metrics."
+          },
+          "budget": {
+            "type": "number",
+            "example": 1200
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "type": {
+            "type": "string",
+            "example": "PUBLIC",
+            "enum": [
+              "PUBLIC",
+              "PRIVATE"
+            ]
+          },
+          "maxMembers": {
+            "type": "number",
+            "example": 6
+          },
+          "isRecruiting": {
+            "type": "boolean",
+            "example": true
+          },
+          "skillsRequired": {
+            "type": "string",
+            "example": "[\"React\", \"TypeScript\"]"
+          },
+          "deadline": {
+            "type": "string",
+            "example": "2026-12-31T23:59:59Z"
+          }
+        }
+      },
+      "AddMemberByEmailDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "colleague@taskbounty.com"
+          },
+          "role": {
+            "type": "string",
+            "example": "DEV",
+            "enum": [
+              "PM",
+              "LEAD_DEV",
+              "REVIEWER",
+              "DEV"
+            ]
+          },
+          "permissions": {
+            "type": "string",
+            "example": "CAN_CREATE_TASK,CAN_MOVE_DONE"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ]
+      },
+      "UpdateMemberPermissionsDto": {
+        "type": "object",
+        "properties": {
+          "permissions": {
+            "type": "string",
+            "example": "CAN_CREATE_TASK,CAN_MOVE_DONE,CAN_REVIEW_TASK"
+          },
+          "role": {
+            "type": "string",
+            "example": "LEAD_DEV",
+            "enum": [
+              "PM",
+              "LEAD_DEV",
+              "REVIEWER",
+              "DEV"
+            ]
+          }
+        },
+        "required": [
+          "permissions"
+        ]
+      },
+      "RewardMemberDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number",
+            "example": 50
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD",
+            "default": "USD"
+          },
+          "reason": {
+            "type": "string",
+            "example": "Khen thưởng hoàn thành xuất sắc Sprint 1 đúng hạn!"
+          }
+        },
+        "required": [
+          "amount",
+          "reason"
+        ]
+      },
+      "ApplyProjectDto": {
+        "type": "object",
+        "properties": {
+          "coverLetter": {
+            "type": "string",
+            "example": "Tôi có 3 năm kinh nghiệm xây dựng DApp..."
+          }
+        }
+      },
       "AssignRoleDto": {
         "type": "object",
         "properties": {
@@ -2161,6 +3273,20 @@
             "type": "number",
             "example": 500
           },
+          "status": {
+            "type": "string",
+            "example": "OPEN",
+            "enum": [
+              "OPEN",
+              "IN_PROGRESS",
+              "REVIEW",
+              "DONE"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "example": "Moderate"
+          },
           "deadline": {
             "type": "string",
             "example": "2026-12-31T23:59:59Z"
@@ -2168,11 +3294,14 @@
           "parentId": {
             "type": "string",
             "example": "parent-task-uuid"
+          },
+          "assigneeId": {
+            "type": "string",
+            "example": "uuid-of-assignee"
           }
         },
         "required": [
-          "title",
-          "description"
+          "title"
         ]
       },
       "TaskResponseDto": {
@@ -2369,56 +3498,6 @@
         "required": [
           "success",
           "message"
-        ]
-      },
-      "NotificationResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "uuid-1234"
-          },
-          "userId": {
-            "type": "string",
-            "example": "uuid-user-1234"
-          },
-          "message": {
-            "type": "string",
-            "example": "Your task has been approved."
-          },
-          "isRead": {
-            "type": "boolean",
-            "example": true
-          },
-          "createdAt": {
-            "type": "string",
-            "example": "2026-07-30T10:00:00Z"
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "message",
-          "isRead",
-          "createdAt"
-        ]
-      },
-      "PaginatedNotificationResponseDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/NotificationResponseDto"
-            }
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PaginationMetaDto"
-          }
-        },
-        "required": [
-          "data",
-          "meta"
         ]
       },
       "WebhookResponseDto": {

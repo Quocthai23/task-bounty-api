@@ -75,4 +75,31 @@ export class TasksController {
   getComments(@Param('id') id: string) {
     return this.tasksService.getComments(id);
   }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get task activity logs and history across projects' })
+  @ApiResponse({ status: 200, description: 'List of task history activities' })
+  @UseGuards(AuthGuard)
+  @Get('tasks/history')
+  getTaskHistory(
+    @Request() req: any,
+    @Query('projectId') projectId?: string,
+    @Query('action') action?: string,
+    @Query('search') search?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const userId = req.user.sub || req.user.id;
+    return this.tasksService.getTaskHistory(userId, {
+      projectId,
+      action,
+      search,
+      startDate,
+      endDate,
+      page,
+      limit
+    });
+  }
 }

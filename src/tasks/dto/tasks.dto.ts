@@ -6,14 +6,25 @@ export class CreateTaskDto {
   @IsString()
   title!: string;
 
-  @ApiProperty({ example: 'Implement the login flow using NestJS.' })
+  @ApiPropertyOptional({ example: 'Implement the login flow using NestJS.' })
+  @IsOptional()
   @IsString()
-  description!: string;
+  description?: string;
 
   @ApiPropertyOptional({ example: 500 })
   @IsOptional()
   @IsNumber()
   budget?: number;
+
+  @ApiPropertyOptional({ example: 'OPEN', enum: ['OPEN', 'IN_PROGRESS', 'REVIEW', 'DONE'] })
+  @IsOptional()
+  @IsIn(['OPEN', 'IN_PROGRESS', 'REVIEW', 'DONE'])
+  status?: string;
+
+  @ApiPropertyOptional({ example: 'Moderate' })
+  @IsOptional()
+  @IsString()
+  priority?: string;
 
   @ApiPropertyOptional({ example: '2026-12-31T23:59:59Z' })
   @IsOptional()

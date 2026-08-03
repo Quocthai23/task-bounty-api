@@ -52,13 +52,14 @@ This platform provides real-time updates via Socket.io.
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api-docs', app, document);
 
-  // Write Swagger JSON spec to file
-  // Write Swagger JSON spec to file
-  const fs = require('fs');
-  fs.writeFileSync(
-    path.join(__dirname, '..', 'swagger-spec.json'),
-    JSON.stringify(document, null, 2),
-  );
+  // Write Swagger JSON spec to file safely
+  try {
+    const fs = require('fs');
+    const specPath = path.join(process.cwd(), 'swagger-spec.json');
+    fs.writeFileSync(specPath, JSON.stringify(document, null, 2));
+  } catch (err) {
+    console.warn('Could not write swagger-spec.json:', err);
+  }
 
   // Use PORT from env
   const port = process.env.PORT || 3000;

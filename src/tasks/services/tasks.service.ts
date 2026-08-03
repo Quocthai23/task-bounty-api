@@ -37,11 +37,43 @@ export class TasksService {
     }
 
     const newTask = await this.prisma.task.create({ 
-      data: { ...dto, projectId },
+      data: {
+        title: dto.title,
+        description: dto.description || 'Chưa có mô tả chi tiết cho nhiệm vụ này.',
+        budget: Number(dto.budget) || 0,
+        deadline: dto.deadline ? new Date(dto.deadline) : null,
+        parentId: dto.parentId || null,
+        assigneeId: dto.assigneeId || null,
+        status: dto.status || 'OPEN',
+        projectId,
+      },
       include: {
         assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
       }
     });
+
+    // Record ActivityLog for Task Creation
+    try {
+      await this.prisma.activityLog.create({
+        data: {
+          userId,
+          action: 'TASK_CREATED',
+          details: JSON.stringify({
+            taskId: newTask.id,
+            taskTitle: newTask.title,
+            projectId: projectId,
+            projectTitle: project.title,
+            assigneeId: dto.assigneeId,
+            assigneeName: newTask.assignee ? `${newTask.assignee.firstName || ''} ${newTask.assignee.lastName || ''}`.trim() || newTask.assignee.email : null,
+            priority: (dto as any).priority || 'Tiêu chuẩn',
+            status: newTask.status,
+            budget: newTask.budget,
+          })
+        }
+      });
+    } catch (e) {
+      console.error('Failed to log TASK_CREATED activity:', e);
+    }
 
     // Notify assignee if assigned
     if (dto.assigneeId) {
@@ -197,6 +229,60 @@ export class TasksService {
       }
     });
 
+    // Record Activity Log
+    try {
+      if (dto.status && dto.status !== task.status) {
+        await this.prisma.activityLog.create({
+          data: {
+            userId,
+            action: 'TASK_STATUS_CHANGED',
+            details: JSON.stringify({
+              taskId: task.id,
+              taskTitle: updatedTask.title,
+              projectId: task.projectId,
+              projectTitle: task.project.title,
+              fromStatus: task.status,
+              toStatus: dto.status,
+              assigneeId: updatedTask.assigneeId,
+              assigneeName: updatedTask.assignee ? `${updatedTask.assignee.firstName || ''} ${updatedTask.assignee.lastName || ''}`.trim() || updatedTask.assignee.email : null,
+            })
+          }
+        });
+      } else if (dto.assigneeId && dto.assigneeId !== task.assigneeId) {
+        await this.prisma.activityLog.create({
+          data: {
+            userId,
+            action: 'TASK_ASSIGNED',
+            details: JSON.stringify({
+              taskId: task.id,
+              taskTitle: updatedTask.title,
+              projectId: task.projectId,
+              projectTitle: task.project.title,
+              previousAssigneeId: task.assigneeId,
+              newAssigneeId: dto.assigneeId,
+              assigneeName: updatedTask.assignee ? `${updatedTask.assignee.firstName || ''} ${updatedTask.assignee.lastName || ''}`.trim() || updatedTask.assignee.email : null,
+            })
+          }
+        });
+      } else {
+        await this.prisma.activityLog.create({
+          data: {
+            userId,
+            action: 'TASK_UPDATED',
+            details: JSON.stringify({
+              taskId: task.id,
+              taskTitle: updatedTask.title,
+              projectId: task.projectId,
+              projectTitle: task.project.title,
+              updatedFields: Object.keys(dto),
+            })
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Failed to log task update activity:', e);
+    }
+
     // If newly assigned or assignee changed, notify the assignee
     if (dto.assigneeId && dto.assigneeId !== task.assigneeId) {
       await this.notificationsService.notifyTaskAssigned(
@@ -212,7 +298,12 @@ export class TasksService {
   }
 
   async addComment(taskId: string, userId: string, dto: CreateCommentDto) {
-    return this.prisma.comment.create({
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { project: { select: { id: true, title: true } } }
+    });
+
+    const comment = await this.prisma.comment.create({
       data: {
         taskId,
         userId,
@@ -222,6 +313,30 @@ export class TasksService {
         user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
       }
     });
+
+    if (task) {
+      try {
+        await this.prisma.activityLog.create({
+          data: {
+            userId,
+            action: 'TASK_COMMENT_ADDED',
+            details: JSON.stringify({
+              taskId,
+              taskTitle: task.title,
+              projectId: task.projectId,
+              projectTitle: task.project?.title || 'Dự án',
+              commentId: comment.id,
+              contentPreview: dto.content.length > 120 ? dto.content.substring(0, 120) + '...' : dto.content,
+              content: dto.content,
+            })
+          }
+        });
+      } catch (e) {
+        console.error('Failed to log comment activity:', e);
+      }
+    }
+
+    return comment;
   }
 
   async getComments(taskId: string) {
@@ -230,6 +345,135 @@ export class TasksService {
       include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } },
       orderBy: { createdAt: 'asc' }
     });
+  }
+
+  async getTaskHistory(userId: string, query: {
+    projectId?: string;
+    action?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }) {
+    const page = Number(query.page) || 1;
+    const limit = Number(query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Find all projects that the user has access to (owned or member)
+    const accessibleProjects = await this.prisma.project.findMany({
+      where: {
+        OR: [
+          { ownerId: userId },
+          { members: { some: { userId } } }
+        ]
+      },
+      select: { id: true, title: true }
+    });
+
+    const accessibleProjectIds = accessibleProjects.map(p => p.id);
+
+    // If specific projectId is requested, verify access
+    let targetProjectIds = accessibleProjectIds;
+    if (query.projectId && query.projectId !== 'ALL') {
+      targetProjectIds = accessibleProjectIds.filter(id => id === query.projectId);
+    }
+
+    const whereClause: any = {
+      action: {
+        in: query.action && query.action !== 'ALL' 
+          ? [query.action] 
+          : ['TASK_CREATED', 'TASK_STATUS_CHANGED', 'TASK_MOVED', 'TASK_ASSIGNED', 'TASK_COMMENT_ADDED', 'TASK_UPDATED']
+      }
+    };
+
+    if (query.startDate || query.endDate) {
+      whereClause.createdAt = {};
+      if (query.startDate) whereClause.createdAt.gte = new Date(query.startDate);
+      if (query.endDate) {
+        const end = new Date(query.endDate);
+        end.setHours(23, 59, 59, 999);
+        whereClause.createdAt.lte = end;
+      }
+    }
+
+    // Retrieve logs
+    const allLogs = await this.prisma.activityLog.findMany({
+      where: whereClause,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            username: true,
+            email: true,
+            avatarUrl: true,
+            profile: { select: { title: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Filter logs belonging to target projects & search query
+    const filteredLogs = allLogs.filter(log => {
+      let detailsObj: any = null;
+      try {
+        detailsObj = log.details ? JSON.parse(log.details) : null;
+      } catch {
+        return false;
+      }
+
+      if (!detailsObj || !detailsObj.projectId) return false;
+      if (!targetProjectIds.includes(detailsObj.projectId)) return false;
+
+      if (query.search && query.search.trim()) {
+        const s = query.search.toLowerCase().trim();
+        const taskTitle = (detailsObj.taskTitle || '').toLowerCase();
+        const projectTitle = (detailsObj.projectTitle || '').toLowerCase();
+        const userFullName = `${log.user?.firstName || ''} ${log.user?.lastName || ''}`.toLowerCase();
+        const userName = (log.user?.username || '').toLowerCase();
+        const userEmail = (log.user?.email || '').toLowerCase();
+        const commentContent = (detailsObj.content || detailsObj.contentPreview || '').toLowerCase();
+
+        return (
+          taskTitle.includes(s) || 
+          projectTitle.includes(s) || 
+          userFullName.includes(s) || 
+          userName.includes(s) || 
+          userEmail.includes(s) ||
+          commentContent.includes(s)
+        );
+      }
+
+      return true;
+    });
+
+    const total = filteredLogs.length;
+    const paginatedLogs = filteredLogs.slice(skip, skip + limit).map(log => {
+      let parsedDetails = {};
+      try {
+        parsedDetails = log.details ? JSON.parse(log.details) : {};
+      } catch {}
+      return {
+        id: log.id,
+        action: log.action,
+        createdAt: log.createdAt,
+        user: log.user,
+        details: parsedDetails,
+      };
+    });
+
+    return {
+      data: paginatedLogs,
+      meta: {
+        total,
+        page,
+        limit,
+        lastPage: Math.ceil(total / limit) || 1,
+      }
+    };
   }
 
   private async ensureNoCircularDependency(parentId: string, currentTaskId: string | null) {
