@@ -33,6 +33,14 @@ services:
       - IPC_LOCK
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: task-bounty-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
   fiat-bridge:
     image: quocthai23/fiat-bridge:latest
     container_name: fiat-bridge
@@ -40,10 +48,20 @@ services:
       - "8080:8080"
     environment:
       - BRIDGE_PORT=8080
-      - RPC_URL=${RPC_URL:-https://rpc.ankr.com/eth_sepolia}
-      - CHAIN_ID=${CHAIN_ID:-11155111}
-      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS}
-      - ADMIN_PRIVATE_KEY=${ADMIN_PRIVATE_KEY}
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-task_bounty}
+      - REDIS_ADDR=redis:6379
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_ADDR=amqp://guest:guest@rabbitmq:5672/
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - RPC_URL=http://host.docker.internal:8545
+      - CHAIN_ID=31337
+      - CONTRACT_ADDRESS=0xe7f1725e7734ce288f8367e1bb143e90bb3f0512
+      - CONTRACT_ADDRESS_VND=0xe7f1725e7734ce288f8367e1bb143e90bb3f0512
+      - CONTRACT_ADDRESS_USD=0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0
+      - CONTRACT_ADDRESS_EUR=0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9
+      - CONTRACT_ADDRESS_JPY=0xdc64a140aa3e981100a9beca4e685f962f0cf6c9
+      - CONTRACT_ADDRESS_CNY=0x5fc8d32690cc91d4c39d9d3abcbd16989f875707
+      - ADMIN_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
       - BANK_PAYOUT_API=http://host.docker.internal:3000/api/wallets/payout-webhook
       - HMAC_SECRET=${HMAC_SECRET:-my-super-secret-hmac-key}
     restart: unless-stopped
@@ -51,6 +69,7 @@ services:
       - postgres
       - vault
       - redis
+      - rabbitmq
 
 volumes:
   pgdata:

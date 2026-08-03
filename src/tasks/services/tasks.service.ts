@@ -6,17 +6,52 @@ import { CreateTaskDto, UpdateTaskDto, CreateCommentDto } from '../dto/tasks.dto
 export class TasksService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(projectId: string, dto: CreateTaskDto) {
+  async create(projectId: string, userId: string, dto: CreateTaskDto) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { members: true }
+    });
+
+    if (!project) throw new NotFoundException('Dự án không tồn tại');
+
+    // Permission check: Owner or member with CAN_CREATE_TASK / PM
+    if (project.ownerId !== userId) {
+      const member = project.members.find(m => m.userId === userId);
+      const hasPermission = member && (
+        member.role === 'PM' || 
+        member.role === 'LEAD_DEV' || 
+        (member.permissions && member.permissions.includes('CAN_CREATE_TASK'))
+      );
+
+      if (!hasPermission) {
+        throw new ForbiddenException('Bạn không có quyền CAN_CREATE_TASK để tạo nhiệm vụ trong dự án này');
+      }
+    }
+
     if (dto.parentId) {
       await this.ensureNoCircularDependency(dto.parentId, null);
     }
-    return this.prisma.task.create({ data: { ...dto, projectId } });
+
+    return this.prisma.task.create({ 
+      data: { ...dto, projectId },
+      include: {
+        assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
+      }
+    });
   }
 
   async findAllByProject(projectId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const [data, total] = await this.prisma.$transaction([
-      this.prisma.task.findMany({ where: { projectId }, skip, take: limit }),
+      this.prisma.task.findMany({ 
+        where: { projectId }, 
+        skip, 
+        take: limit,
+        include: {
+          assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
       this.prisma.task.count({ where: { projectId } }),
     ]);
 
@@ -42,7 +77,7 @@ export class TasksService {
         where, 
         skip, 
         take: limit,
-        include: { project: { select: { title: true, budget: true } } }
+        include: { project: { select: { title: true, budget: true, currency: true } } }
       }),
       this.prisma.task.count({ where }),
     ]);
@@ -66,7 +101,7 @@ export class TasksService {
         where, 
         skip, 
         take: limit,
-        include: { project: { select: { title: true } } }
+        include: { project: { select: { title: true, currency: true } } }
       }),
       this.prisma.task.count({ where }),
     ]);
@@ -83,21 +118,39 @@ export class TasksService {
   }
 
   async update(id: string, userId: string, dto: UpdateTaskDto) {
-    const task = await this.prisma.task.findUnique({ where: { id }, include: { project: true } });
-    if (!task) throw new NotFoundException('Task not found');
+    const task = await this.prisma.task.findUnique({ 
+      where: { id }, 
+      include: { 
+        project: { 
+          include: { members: true } 
+        } 
+      } 
+    });
+    if (!task) throw new NotFoundException('Nhiệm vụ không tồn tại');
 
+    // Permission check for marking task as DONE
     if (dto.status === 'DONE') {
       if (task.project.ownerId !== userId) {
-        const member = await this.prisma.projectMember.findUnique({
-          where: { projectId_userId: { projectId: task.projectId, userId } }
-        });
-        if (!member || !['PM', 'LEAD_DEV'].includes(member.role)) {
-          throw new ForbiddenException('Only PM or LEAD_DEV can mark task as DONE');
+        const member = task.project.members.find(m => m.userId === userId);
+        const canMoveDone = member && (
+          member.role === 'PM' || 
+          member.role === 'LEAD_DEV' || 
+          (member.permissions && member.permissions.includes('CAN_MOVE_DONE'))
+        );
+
+        if (!canMoveDone) {
+          throw new ForbiddenException('Bạn không có quyền CAN_MOVE_DONE để duyệt hoàn thành nhiệm vụ này');
         }
       }
     }
 
-    return this.prisma.task.update({ where: { id }, data: dto });
+    return this.prisma.task.update({ 
+      where: { id }, 
+      data: dto,
+      include: {
+        assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
+      }
+    });
   }
 
   async addComment(taskId: string, userId: string, dto: CreateCommentDto) {
@@ -106,6 +159,9 @@ export class TasksService {
         taskId,
         userId,
         content: dto.content,
+      },
+      include: {
+        user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
       }
     });
   }
@@ -113,22 +169,22 @@ export class TasksService {
   async getComments(taskId: string) {
     return this.prisma.comment.findMany({
       where: { taskId },
-      include: { user: { select: { id: true, email: true } } }
+      include: { user: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } } },
+      orderBy: { createdAt: 'asc' }
     });
   }
 
-  // Prevent infinite recursive tasks
   private async ensureNoCircularDependency(parentId: string, currentTaskId: string | null) {
     let currentParent = await this.prisma.task.findUnique({ where: { id: parentId } });
     let depth = 0;
-    const maxDepth = 3; // Limit task nesting to 3 levels
+    const maxDepth = 3;
 
     while (currentParent) {
       if (depth >= maxDepth) {
-        throw new BadRequestException(`Task nesting exceeds maximum depth of ${maxDepth}`);
+        throw new BadRequestException(`Độ sâu phân cấp nhiệm vụ vượt quá giới hạn tối đa (${maxDepth})`);
       }
       if (currentTaskId && currentParent.id === currentTaskId) {
-        throw new BadRequestException('Circular dependency detected in tasks');
+        throw new BadRequestException('Phát hiện quan hệ lặp vòng tròn (circular dependency) giữa các nhiệm vụ');
       }
       if (!currentParent.parentId) break;
       currentParent = await this.prisma.task.findUnique({ where: { id: currentParent.parentId } });

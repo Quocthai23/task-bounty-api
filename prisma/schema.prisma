@@ -25,6 +25,7 @@ model User {
 
   profile             Profile?
   bankAccount         BankAccount?
+  wallet              UserWallet?
   projects            Project[]      @relation("ProjectOwner")
   applications        Application[]
   tasks               Task[]         @relation("TaskAssignee")
@@ -33,6 +34,7 @@ model User {
   notifications       Notification[]
   projectMembers      ProjectMember[]
   activityLogs        ActivityLog[]
+  withdrawalQuotes    WithdrawalQuote[]
 }
 
 model Profile {
@@ -71,11 +73,14 @@ model Project {
   title          String
   description    String
   budget         Float         @default(0)
+  currency       String        @default("USD")
   type           String        @default("PUBLIC") // PUBLIC, PRIVATE
   status         String        @default("OPEN")   // OPEN, IN_PROGRESS, COMPLETED
   companyName    String?
   priority       String?       @default("Moderate")
   positions      Int           @default(1)
+  maxMembers     Int           @default(5)
+  isRecruiting   Boolean       @default(true)
   skillsRequired String?       // JSON stringified array
   deadline       DateTime?
   isEscrowed     Boolean       @default(false)
@@ -91,27 +96,31 @@ model Project {
 }
 
 model ProjectMember {
-  id        String   @id @default(uuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  role      String   @default("DEV") // PM, LEAD_DEV, REVIEWER, DEV
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(uuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  role          String   @default("DEV") // PM, LEAD_DEV, REVIEWER, DEV
+  permissions   String   @default("CAN_VIEW_TASK") // comma-separated e.g. "CAN_CREATE_TASK,CAN_MOVE_DONE,CAN_REVIEW_TASK"
+  bonusReceived Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
   
   @@unique([projectId, userId])
 }
 
 model Application {
-  id        String   @id @default(uuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id])
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  coverLetter String?
+  appliedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Task {
@@ -153,10 +162,15 @@ model Transaction {
   amount        Float
   currency      String   @default("USD")
   bankAccountId String?
-  nonce         String?  @unique
-  txHash        String?
-  status        String   @default("PENDING") // PENDING, COMPLETED, FAILED
-  createdAt     DateTime @default(now())
+  nonce          String?  @unique
+  txHash         String?
+  sourceCurrency String?
+  targetCurrency String?
+  targetAmount   Float?
+  exchangeRate   Float?
+  quoteId        String?
+  status         String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  createdAt      DateTime @default(now())
 }
 
 model Notification {
@@ -188,3 +202,31 @@ model ActivityLog {
   details   String?  
   createdAt DateTime @default(now())
 }
+
+model UserWallet {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  systemCredits  Float    @default(0) // Off-chain bonus / system points / manual balance
+  lockedEscrow   Float    @default(0) // Balance currently locked in escrow
+  currency       String   @default("VND")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model WithdrawalQuote {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  sourceCurrency String   // e.g. USD, EUR, JPY, CNY
+  targetCurrency String   // e.g. VND
+  sourceAmount   Float
+  targetAmount   Float
+  exchangeRate   Float
+  expiresAt      DateTime
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, isUsed])
+}
+

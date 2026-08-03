@@ -1,98 +1,114 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+<div align="center">
+  <h1>🚀 Task Bounty API (Backend)</h1>
+  <p><i>The intelligent backend powering the next generation of decentralized task management.</i></p>
+</div>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+---
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 📖 Tổng quan dự án (Project Overview)
 
-## Description
+**Task Bounty** không chỉ là một hệ thống quản lý công việc (Task Management System) thông thường. Đây là một nền tảng tiên phong kết hợp **sức mạnh của Web3 (Blockchain)** và **Trí tuệ nhân tạo (AI)** nhằm giải quyết hai vấn đề cốt lõi trong làm việc từ xa và làm việc nhóm: **Độ tin cậy trong thanh toán** và **Hiệu suất quản lý tiến độ**.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+API này đóng vai trò là "trái tim" của hệ thống, cung cấp các endpoint bảo mật, xử lý logic nghiệp vụ phức tạp, tương tác với Smart Contract trên blockchain và giao tiếp với các mô hình AI để đưa ra dự đoán.
 
-## Project setup
+---
+
+## ⭐ Các tính năng cốt lõi (Core Features)
+
+### 1. 🔗 Thanh toán tự động qua Blockchain (Smart Contract Bounties)
+Loại bỏ hoàn toàn rủi ro quỵt tiền hay chậm trễ thanh toán.
+- **Ký quỹ (Escrow):** Khi một Task được tạo ra kèm theo một phần thưởng (bounty), số tiền Crypto (ETH, USDT, token riêng, v.v.) sẽ được khóa lại trong một Smart Contract.
+- **Tự động giải ngân:** Ngay khi người quản lý (Project Manager/Client) xác nhận Task đã hoàn thành đạt yêu cầu, API sẽ kích hoạt giao dịch hoặc cung cấp chữ ký mã hóa để người nhận (Assignee) có thể rút tiền ngay lập tức về ví Web3 của họ.
+- **Minh bạch 100%:** Mọi trạng thái tài chính của công việc đều có thể được theo dõi trên blockchain explorer thông qua `ethers.js`.
+
+### 2. 🧠 AI phân tích và Cảnh báo rủi ro (AI Deadline & Risk Predictor)
+Giúp người quản lý chủ động thay vì bị động trước các deadline.
+- **Đánh giá độ phức tạp:** AI phân tích nội dung, mô tả (description) của Task để tự động chấm điểm độ phức tạp.
+- **Dự đoán trễ hạn:** Dựa trên khối lượng công việc hiện tại của nhân sự (Assignee) và độ khó của task, AI sẽ đưa ra cảnh báo sớm (Ví dụ: *"Task này có nguy cơ trễ hạn 70% do nhân sự đang quá tải"*).
+- **Gợi ý phân bổ:** Tự động đề xuất thời hạn (due date) hợp lý hoặc gợi ý nhân sự phù hợp nhất để thực hiện.
+
+### 3. ⚡ Xử lý dữ liệu thời gian thực (Real-time Sync & Notifications)
+- **WebSockets (Socket.io):** Bất cứ thay đổi nào về trạng thái Task (Từ `TODO` sang `IN_PROGRESS`, hoặc `DONE`) hay trạng thái thanh toán đều được push ngay lập tức đến Frontend mà không cần reload.
+- **Thông báo đa kênh:** Hệ thống thông báo in-app realtime, kết hợp gửi Email cảnh báo khi một task do AI đánh giá là "Nguy cơ trễ hạn cao".
+
+### 4. ⚙️ Kiến trúc Hàng đợi hiệu năng cao (Background Processing)
+- Sử dụng **BullMQ + Redis** để xử lý các tác vụ nặng chạy ngầm (Background jobs).
+- Nhờ đó, việc giao tiếp chậm trễ với mạng lưới Blockchain hay chờ phản hồi từ API của AI (như OpenAI) sẽ không làm chặn (block) luồng chính của ứng dụng. Người dùng luôn nhận được phản hồi API dưới 100ms.
+
+### 5. 🔒 Bảo mật và Phân quyền (Auth & RBAC)
+- Xác thực an toàn với **JWT (JSON Web Token)**.
+- Phân quyền nhiều cấp độ: `Admin` (Toàn quyền hệ thống), `Client/Manager` (Người tạo task, cấp tiền, duyệt task), `Freelancer/Assignee` (Người nhận việc và nhận tiền).
+
+---
+
+## 🛠 Công nghệ sử dụng (Tech Stack)
+
+API được xây dựng dựa trên kiến trúc Modular mạnh mẽ của NestJS, đảm bảo khả năng mở rộng (scalable) và dễ bảo trì (maintainable).
+
+- **Core Framework:** [NestJS](https://nestjs.com/) (Node.js)
+- **Cơ sở dữ liệu:** PostgreSQL với [Prisma ORM](https://www.prisma.io/)
+- **Blockchain Integration:** [Ethers.js](https://docs.ethers.org/)
+- **Message Queue & Caching:** [BullMQ](https://docs.bullmq.io/) & [Redis](https://redis.io/)
+- **Real-time Communication:** [Socket.io](https://socket.io/)
+- **Security:** Passport, JWT, bcrypt.
+- **API Documentation:** Swagger / OpenAPI
+
+---
+
+## 📦 Hướng dẫn cài đặt & Chạy dự án (Getting Started)
+
+### Yêu cầu hệ thống (Prerequisites)
+- [Node.js](https://nodejs.org/en/) (v18 trở lên)
+- [PostgreSQL](https://www.postgresql.org/) (Đang chạy local hoặc dùng cloud database như Supabase/Neon)
+- [Redis](https://redis.io/) (Cần thiết cho BullMQ)
+
+### Cài đặt (Installation)
+
+1. **Clone repository:**
+   ```bash
+   git clone <repository-url>
+   cd task-bounty-api
+   ```
+
+2. **Cài đặt thư viện:**
+   ```bash
+   npm install
+   ```
+
+3. **Thiết lập biến môi trường:**
+   Tạo file `.env` từ file mẫu:
+   ```bash
+   cp .env.example .env
+   ```
+   *Mở file `.env` và điền các thông tin quan trọng như `DATABASE_URL`, `REDIS_URL`, RPC Node cho mạng Blockchain, Private Key của ví vận hành (nếu có), và API Key của dịch vụ AI.*
+
+4. **Khởi tạo cơ sở dữ liệu:**
+   Chạy lệnh Prisma để tạo bảng trong PostgreSQL:
+   ```bash
+   npx prisma db push
+   # hoặc npx prisma migrate dev
+   ```
+
+### Khởi chạy (Running the App)
 
 ```bash
-$ npm install
+# Chạy ở chế độ phát triển (Tự động reload khi có thay đổi)
+npm run start:dev
+
+# Chạy ở chế độ debug
+npm run start:debug
+
+# Build và chạy ở chế độ Production
+npm run build
+npm run start:prod
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## 📖 Tài liệu API (API Documentation)
 
-# watch mode
-$ npm run start:dev
+Dự án được tích hợp sẵn Swagger để test và xem tài liệu API một cách trực quan.
+Sau khi khởi chạy ứng dụng thành công, vui lòng truy cập:
+👉 `http://localhost:<PORT>/api/docs` (hoặc `/swagger`)
 
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Tại đây, bạn có thể xem mô tả chi tiết của từng endpoint, các DTOs cần thiết và thực hiện test trực tiếp trên trình duyệt.

@@ -23,10 +23,11 @@ export class WalletsWebhookController {
     @Body() payload: any,
     @Req() req: any
   ) {
-    const secret = this.configService.get<string>('HMAC_SECRET');
-    if (!secret) {
-      throw new UnauthorizedException('HMAC secret not configured');
-    }
+    const secret = 
+      this.configService.get<string>('FIAT_BRIDGE_API_KEY') || 
+      this.configService.get<string>('PAYOS_CHECKSUM_KEY') || 
+      this.configService.get<string>('HMAC_SECRET') || 
+      'my-super-secret-hmac-key';
 
     if (!signature) {
       throw new UnauthorizedException('Missing signature');
@@ -49,5 +50,21 @@ export class WalletsWebhookController {
     });
 
     return { success: true, queued: true };
+  }
+
+  @ApiOperation({ summary: 'Receive webhook from PayOS for deposits' })
+  @HttpCode(HttpStatus.OK)
+  @Post('payos-webhook')
+  async handlePayOSWebhook(@Body() body: any) {
+    console.log('🎉 Đã nhận được Webhook từ PayOS:', body);
+
+    try {
+      await this.walletsService.processPayOSWebhook(body);
+    } catch (e: any) {
+      console.error('Lỗi xử lý Webhook PayOS:', e.message || e);
+    }
+
+    // Trả về 200 OK để PayOS biết hệ thống của bạn đã nhận được dữ liệu
+    return { success: true };
   }
 }
