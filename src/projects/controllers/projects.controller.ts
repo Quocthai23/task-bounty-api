@@ -34,8 +34,18 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Get all public projects' })
   @ApiResponse({ status: 200, description: 'List of projects.', type: PaginatedProjectResponseDto })
   @Get()
-  findAll(@Query() query: PaginationQueryDto) {
-    return this.projectsService.findAll(query.page || 1, query.limit || 10);
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('minBudget') minBudget?: string,
+    @Query('maxBudget') maxBudget?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const minNum = minBudget ? parseFloat(minBudget) : undefined;
+    const maxNum = maxBudget ? parseFloat(maxBudget) : undefined;
+    return this.projectsService.findAll(pageNum, limitNum, search, minNum, maxNum);
   }
 
   @ApiBearerAuth()

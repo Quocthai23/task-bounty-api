@@ -134,13 +134,32 @@ export class ProjectsService {
     });
   }
 
-  async findAll(page: number, limit: number) {
+  async findAll(page: number, limit: number, search?: string, minBudget?: number, maxBudget?: number) {
     const skip = (page - 1) * limit;
+    const where: any = { type: 'PUBLIC' };
+
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+        { companyName: { contains: q, mode: 'insensitive' } },
+        { skillsRequired: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (minBudget !== undefined && !isNaN(minBudget)) {
+      where.budget = { ...where.budget, gte: minBudget };
+    }
+    if (maxBudget !== undefined && !isNaN(maxBudget)) {
+      where.budget = { ...where.budget, lte: maxBudget };
+    }
+
     const [data, total] = await this.prisma.$transaction([
       this.prisma.project.findMany({ 
         skip, 
         take: limit,
-        where: { type: 'PUBLIC' },
+        where,
         include: {
           owner: { select: { id: true, email: true, firstName: true, lastName: true } },
           members: { select: { id: true, userId: true, role: true } },
@@ -148,7 +167,7 @@ export class ProjectsService {
         },
         orderBy: { createdAt: 'desc' }
       }),
-      this.prisma.project.count({ where: { type: 'PUBLIC' } }),
+      this.prisma.project.count({ where }),
     ]);
 
     return {

@@ -95,13 +95,41 @@ export class TasksService {
 
   async getJoinedTasks(userId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
-    const where = { assigneeId: userId };
+    const where = {
+      OR: [
+        { assigneeId: userId },
+        { project: { ownerId: userId } },
+        { project: { members: { some: { userId } } } },
+      ]
+    };
     const [data, total] = await this.prisma.$transaction([
       this.prisma.task.findMany({ 
         where, 
         skip, 
         take: limit,
-        include: { project: { select: { title: true, currency: true } } }
+        include: { 
+          project: { 
+            select: { 
+              id: true, 
+              title: true, 
+              currency: true, 
+              companyName: true, 
+              status: true, 
+              ownerId: true, 
+              budget: true 
+            } 
+          },
+          assignee: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              avatarUrl: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
       }),
       this.prisma.task.count({ where }),
     ]);
