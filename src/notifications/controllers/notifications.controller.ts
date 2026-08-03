@@ -1,49 +1,69 @@
-import { Controller, Get, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Put, UseGuards, Request, Query, Param } from '@nestjs/common';
+import { NotificationsService } from '../services/notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthGuard } from '../../auth/guards/auth.guard';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
-import { NotificationResponseDto, PaginatedNotificationResponseDto } from '../dto/notifications.dto';
-import { PaginationQueryDto } from '../../common/dto/pagination.dto';
+import { PaginatedNotificationResponseDto } from '../dto/notifications.dto';
 
 @ApiTags('Notifications')
 @Controller('notifications')
 @ApiBearerAuth()
 @UseGuards(AuthGuard)
 export class NotificationsController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  @ApiOperation({ summary: 'Get user notifications history' })
+  @ApiOperation({ summary: 'Get unified notifications & activity history' })
   @ApiResponse({ status: 200, description: 'Return a list of notifications.', type: PaginatedNotificationResponseDto })
   @Get()
-  async getNotifications(@Request() req: any, @Query() query: PaginationQueryDto) {
-    const page = query.page || 1;
-    const limit = query.limit || 10;
-    const skip = (page - 1) * limit;
+  async getNotifications(
+    @Request() req: any, 
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('category') category?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const p = Number(page) || 1;
+    const l = Number(limit) || 20;
+    const userId = req.user.sub || req.user.id;
 
-    const [data, total] = await this.prisma.$transaction([
-      this.prisma.notification.findMany({
-        where: { userId: req.user.sub },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit,
-      }),
-      this.prisma.notification.count({ where: { userId: req.user.sub } }),
-    ]);
-    
-    // Auto-mark as read when fetched via REST
-    await this.prisma.notification.updateMany({
-      where: { userId: req.user.sub, isRead: false },
+    return this.notificationsService.getUnifiedHistory(
+      userId,
+      category,
+      startDate,
+      endDate,
+      p,
+      l,
+    );
+  }
+
+  @ApiOperation({ summary: 'Scan active deadlines and generate notifications' })
+  @Get('scan-deadlines')
+  async scanDeadlines(@Request() req: any) {
+    const userId = req.user.sub || req.user.id;
+    return this.notificationsService.checkDeadlines(userId);
+  }
+
+  @ApiOperation({ summary: 'Mark a notification as read' })
+  @Put(':id/read')
+  async markAsRead(@Request() req: any, @Param('id') id: string) {
+    const userId = req.user.sub || req.user.id;
+    return this.prisma.notification.updateMany({
+      where: { id, userId },
       data: { isRead: true },
     });
+  }
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        lastPage: Math.ceil(total / limit),
-      },
-    };
+  @ApiOperation({ summary: 'Mark all notifications as read' })
+  @Put('read-all')
+  async markAllAsRead(@Request() req: any) {
+    const userId = req.user.sub || req.user.id;
+    return this.prisma.notification.updateMany({
+      where: { userId, isRead: false },
+      data: { isRead: true },
+    });
   }
 }

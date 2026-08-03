@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { 
   CreateProjectDto, 
   UpdateProjectDto, 
@@ -11,7 +12,10 @@ import {
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(ownerId: string, dto: CreateProjectDto) {
     const { initialMemberEmails, deadline, positions, maxMembers, type, budget, currency, skillsRequired, ...rest } = dto;
@@ -485,14 +489,18 @@ export class ProjectsService {
       },
     });
 
-    // Notify project PM/Owner
-    await this.prisma.notification.create({
-      data: {
-        userId: project.ownerId,
-        type: 'SYSTEM',
-        content: `Có ứng viên mới vừa nộp đơn ứng tuyển vào dự án "${project.title}".`,
-      }
-    });
+    // Get applicant user name for rich notification
+    const applicantUser = await this.prisma.user.findUnique({ where: { id: userId } });
+    const applicantName = applicantUser ? `${applicantUser.firstName || ''} ${applicantUser.lastName || ''}`.trim() || applicantUser.email : 'Ứng viên';
+
+    // Send notification & activity log to both applicant and PM
+    await this.notificationsService.notifyApplication(
+      userId,
+      project.ownerId,
+      project.title,
+      applicantName,
+      projectId
+    );
 
     return application;
   }
@@ -563,22 +571,20 @@ export class ProjectsService {
       }
 
       // Notify candidate
-      await this.prisma.notification.create({
-        data: {
-          userId: application.userId,
-          type: 'SYSTEM',
-          content: `🎉 Chúc mừng! Hồ sơ ứng tuyển của bạn vào dự án "${project.title}" đã được PM phê duyệt. Bạn đã là thành viên chính thức của dự án!`,
-        }
-      });
+      await this.notificationsService.createNotification(
+        application.userId,
+        `🎉 Chúc mừng! Hồ sơ ứng tuyển của bạn vào dự án "${project.title}" đã được PM phê duyệt. Bạn đã là thành viên chính thức của dự án!`,
+        'APPLICATION_UPDATE',
+        { projectId, status: 'APPROVED', projectTitle: project.title }
+      );
     } else if (status === 'REJECTED') {
       // Notify candidate
-      await this.prisma.notification.create({
-        data: {
-          userId: application.userId,
-          type: 'SYSTEM',
-          content: `Hồ sơ ứng tuyển của bạn vào dự án "${project.title}" chưa phù hợp tại thời điểm này. Cảm ơn bạn đã quan tâm!`,
-        }
-      });
+      await this.notificationsService.createNotification(
+        application.userId,
+        `Hồ sơ ứng tuyển của bạn vào dự án "${project.title}" chưa phù hợp tại thời điểm này. Cảm ơn bạn đã quan tâm!`,
+        'APPLICATION_UPDATE',
+        { projectId, status: 'REJECTED', projectTitle: project.title }
+      );
     }
 
     return this.prisma.application.update({

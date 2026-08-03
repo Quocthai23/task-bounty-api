@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { CreateTaskDto, UpdateTaskDto, CreateCommentDto } from '../dto/tasks.dto';
 
 @Injectable()
 export class TasksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async create(projectId: string, userId: string, dto: CreateTaskDto) {
     const project = await this.prisma.project.findUnique({
@@ -32,12 +36,25 @@ export class TasksService {
       await this.ensureNoCircularDependency(dto.parentId, null);
     }
 
-    return this.prisma.task.create({ 
+    const newTask = await this.prisma.task.create({ 
       data: { ...dto, projectId },
       include: {
         assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
       }
     });
+
+    // Notify assignee if assigned
+    if (dto.assigneeId) {
+      await this.notificationsService.notifyTaskAssigned(
+        dto.assigneeId,
+        dto.title,
+        project.title,
+        newTask.id,
+        projectId
+      );
+    }
+
+    return newTask;
   }
 
   async findAllByProject(projectId: string, page: number, limit: number) {
@@ -172,13 +189,26 @@ export class TasksService {
       }
     }
 
-    return this.prisma.task.update({ 
+    const updatedTask = await this.prisma.task.update({ 
       where: { id }, 
       data: dto,
       include: {
         assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
       }
     });
+
+    // If newly assigned or assignee changed, notify the assignee
+    if (dto.assigneeId && dto.assigneeId !== task.assigneeId) {
+      await this.notificationsService.notifyTaskAssigned(
+        dto.assigneeId,
+        updatedTask.title,
+        task.project.title,
+        updatedTask.id,
+        task.projectId
+      );
+    }
+
+    return updatedTask;
   }
 
   async addComment(taskId: string, userId: string, dto: CreateCommentDto) {

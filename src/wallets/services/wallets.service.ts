@@ -3,6 +3,7 @@ import axios from 'axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EncryptionService } from '../../common/encryption/encryption.service';
 import { AuditLogService } from '../../common/services/audit-log.service';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 import { UpdateBankAccountDto, DepositWithdrawDto, GrantCreditDto, SwapCurrencyDto } from '../dto/wallets.dto';
 import { ethers } from 'ethers';
 import { PayOS } from '@payos/node';
@@ -20,6 +21,7 @@ export class WalletsService {
     private readonly configService: ConfigService,
     private readonly auditLog: AuditLogService,
     private readonly exchangeRatesService: ExchangeRatesService,
+    private readonly notificationsService: NotificationsService,
   ) {
     const checksumKey = 
       this.configService.get<string>('PAYOS_CHECKSUM_KEY') || 
@@ -276,6 +278,14 @@ export class WalletsService {
           });
           console.log(`✅ Giao dịch ${tx.id} (Order ${orderCode}) đã COMPLETED`);
 
+          // Send Deposit Notification & Activity Log
+          await this.notificationsService.notifyDepositSuccess(
+            tx.userId,
+            tx.amount,
+            tx.currency || 'VND',
+            tx.txHash || undefined
+          );
+
           // GỌI FIAT-BRIDGE HOẶC DIRECT EVM ĐỂ MINT TOKEN ON-CHAIN
           let mintSuccess = false;
           try {
@@ -453,6 +463,14 @@ export class WalletsService {
         }
       }
 
+      await this.notificationsService.notifyWithdrawal(
+        userId,
+        dto.amount,
+        currency,
+        dto.targetAddress ? `Ví ${dto.targetAddress.slice(0, 6)}...${dto.targetAddress.slice(-4)}` : 'Ví điện tử',
+        'COMPLETED'
+      );
+
       return tx;
     } else {
       // Check if this is a Cross-Currency Burn-to-Payout request (e.g. Burn USD -> Payout VND)
@@ -572,6 +590,14 @@ export class WalletsService {
           console.error(`⚠️ Direct EVM burn error on bank withdrawal:`, evmErr.message);
         }
       }
+
+      await this.notificationsService.notifyWithdrawal(
+        userId,
+        dto.amount,
+        currency,
+        bankInfo.accountNumber ? `${bankInfo.bankName} (****${bankInfo.accountNumber.slice(-4)})` : 'Ngân hàng',
+        'PENDING'
+      );
 
       return tx;
     }
@@ -895,14 +921,19 @@ export class WalletsService {
       }
     }
 
-    await this.auditLog.logAction(userId, 'CURRENCY_SWAP', {
-      transactionId: tx.id,
-      sourceCurrency: srcCurr,
-      sourceAmount: dto.amount,
-      targetCurrency: tgtCurr,
-      targetAmount,
-      exchangeRate,
-    });
+    await this.notificationsService.createNotification(
+      userId,
+      `🔄 Quy đổi ngoại tệ thành công: Đã đổi ${dto.amount} ${srcCurr} sang ${targetAmount} ${tgtCurr} (Tỷ giá: ${exchangeRate}).`,
+      'SYSTEM',
+      {
+        transactionId: tx.id,
+        sourceCurrency: srcCurr,
+        sourceAmount: dto.amount,
+        targetCurrency: tgtCurr,
+        targetAmount,
+        exchangeRate,
+      }
+    );
 
     return {
       transactionId: tx.id,

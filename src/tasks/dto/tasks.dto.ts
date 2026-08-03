@@ -24,6 +24,11 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  @ApiPropertyOptional({ example: 'uuid-of-assignee' })
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
 }
 
 export class UpdateTaskDto {

@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/services/notifications.service';
 import * as fs from 'fs';
 import * as path from 'path';
 
 @Injectable()
 export class ProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async getProfile(userId: string) {
     let profile = await this.prisma.profile.findUnique({
@@ -22,7 +26,7 @@ export class ProfileService {
     return { ...user, profile };
   }
 
-  async getPublicProfileByUsername(username: string) {
+  async getPublicProfileByUsername(username: string, viewerUserId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { username },
       select: {
@@ -37,6 +41,16 @@ export class ProfileService {
     });
 
     if (!user) return null;
+
+    // If viewed by another authenticated user, send notification to candidate
+    if (viewerUserId && viewerUserId !== user.id) {
+      const viewer = await this.prisma.user.findUnique({
+        where: { id: viewerUserId },
+        select: { firstName: true, lastName: true, email: true }
+      });
+      const viewerName = viewer ? `${viewer.firstName || ''} ${viewer.lastName || ''}`.trim() || viewer.email : 'Nhà tuyển dụng';
+      await this.notificationsService.notifyProfileViewed(user.id, viewerName);
+    }
 
     // Get completed jobs as applicant (where they are DEV and project is COMPLETED or CLOSED)
     const completedJobsAsDev = await this.prisma.projectMember.count({
@@ -63,7 +77,7 @@ export class ProfileService {
         completedJobsAsDev,
         completedJobsAsPm,
         totalJobs: completedJobsAsDev + completedJobsAsPm,
-        rating: 4.8 // Mock rating for MVP
+        rating: 4.8
       }
     };
   }
@@ -108,7 +122,7 @@ export class ProfileService {
       where: { id: userId },
       data: { firstName, lastName, nickname, avatarUrl },
     });
-    return this.prisma.profile.upsert({
+    const updated = await this.prisma.profile.upsert({
       where: { userId },
       update: { 
         gender, title, experience, 
@@ -123,22 +137,29 @@ export class ProfileService {
         githubUrl, portfolioUrl, expectedRate: expectedRate ? Number(expectedRate) : null 
       },
     });
+
+    await this.notificationsService.notifyProfileUpdate(userId, 'thông tin cơ bản và kỹ năng');
+    return updated;
   }
 
   async updateBio(userId: string, bio: string) {
-    return this.prisma.profile.upsert({
+    const updated = await this.prisma.profile.upsert({
       where: { userId },
       update: { bio },
       create: { userId, bio },
     });
+    await this.notificationsService.notifyProfileUpdate(userId, 'tiểu sử giới thiệu cá nhân');
+    return updated;
   }
 
   async updateSocials(userId: string, socials: any) {
-    return this.prisma.profile.upsert({
+    const updated = await this.prisma.profile.upsert({
       where: { userId },
       update: { socialLinks: JSON.stringify(socials) },
       create: { userId, socialLinks: JSON.stringify(socials) },
     });
+    await this.notificationsService.notifyProfileUpdate(userId, 'liên kết mạng xã hội');
+    return updated;
   }
 
   async uploadCv(userId: string, data: { name: string, base64: string }) {
@@ -156,11 +177,14 @@ export class ProfileService {
     };
     
     cvs.push(newCv);
-    return this.prisma.profile.upsert({
+    const updated = await this.prisma.profile.upsert({
       where: { userId },
       update: { cvs: JSON.stringify(cvs) },
       create: { userId, cvs: JSON.stringify(cvs) },
     });
+
+    await this.notificationsService.notifyProfileUpdate(userId, `hồ sơ CV (${data.name})`);
+    return updated;
   }
 
   async deleteCv(userId: string, cvId: string) {
@@ -170,10 +194,12 @@ export class ProfileService {
     let cvs = JSON.parse(profile.cvs);
     cvs = cvs.filter((cv: any) => cv.id !== cvId);
     
-    return this.prisma.profile.update({
+    const updated = await this.prisma.profile.update({
       where: { userId },
       data: { cvs: JSON.stringify(cvs) },
     });
+    await this.notificationsService.notifyProfileUpdate(userId, 'danh sách hồ sơ CV');
+    return updated;
   }
 
   async setPrimaryCv(userId: string, cvId: string) {

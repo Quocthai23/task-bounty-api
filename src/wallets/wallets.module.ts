@@ -8,12 +8,14 @@ import { CommonModule } from '../common/common.module';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { TransactionsProcessor } from './queue/transactions.processor';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     PrismaModule, 
     CommonModule, 
     ConfigModule,
+    NotificationsModule,
     BullModule.registerQueue({
       name: 'transactions',
     }),
