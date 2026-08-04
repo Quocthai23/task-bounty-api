@@ -141,6 +141,8 @@ model Task {
   priority    String?   @default("Moderate") // Low, Moderate, High, Urgent
   tags        String?   // JSON stringified array of string tags e.g. ["Frontend", "Bug"]
   attachments String?   // JSON stringified array of attachments/images e.g. [{id, name, base64, size, type}]
+  isEscrowed  Boolean   @default(false)
+  escrowTxHash String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

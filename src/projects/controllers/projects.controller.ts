@@ -130,6 +130,26 @@ export class ProjectsController {
   }
 
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Accept project invitation' })
+  @ApiResponse({ status: 200, description: 'Invitation accepted.' })
+  @UseGuards(AuthGuard)
+  @Post(':id/invitation/accept')
+  acceptInvitation(@Param('id') id: string, @Request() req: any) {
+    const userId = req.user.sub || req.user.id;
+    return this.projectsService.acceptInvitation(id, userId);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reject project invitation' })
+  @ApiResponse({ status: 200, description: 'Invitation rejected.' })
+  @UseGuards(AuthGuard)
+  @Post(':id/invitation/reject')
+  rejectInvitation(@Param('id') id: string, @Request() req: any) {
+    const userId = req.user.sub || req.user.id;
+    return this.projectsService.rejectInvitation(id, userId);
+  }
+
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Apply for a project' })
   @ApiResponse({ status: 201, description: 'Application submitted.' })
   @UseGuards(AuthGuard)

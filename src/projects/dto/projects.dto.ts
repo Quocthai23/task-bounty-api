@@ -148,6 +148,12 @@ export class RewardMemberDto {
   @IsOptional()
   currency?: string;
 
+  @ApiPropertyOptional({ example: 'CREDIT', enum: ['CREDIT', 'ON_CHAIN'], default: 'CREDIT' })
+  @IsString()
+  @IsOptional()
+  @IsIn(['CREDIT', 'ON_CHAIN'])
+  source?: 'CREDIT' | 'ON_CHAIN';
+
   @ApiProperty({ example: 'Khen thưởng hoàn thành xuất sắc Sprint 1 đúng hạn!' })
   @IsString()
   @IsNotEmpty()

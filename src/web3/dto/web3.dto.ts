@@ -15,6 +15,13 @@ export class ApprovePayoutDto {
   taskId!: string;
 }
 
+export class RefundEscrowDto {
+  @ApiProperty({ example: 'task-uuid-123' })
+  @IsString()
+  @IsNotEmpty()
+  taskId!: string;
+}
+
 export class SyncTransactionDto {
   @ApiProperty({ example: '0x123abc456def789...' })
   @IsString()

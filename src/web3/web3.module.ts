@@ -7,6 +7,7 @@ import { CommonModule } from '../common/common.module';
 @Module({
   imports: [PrismaModule, CommonModule],
   controllers: [Web3Controller],
-  providers: [Web3Service]
+  providers: [Web3Service],
+  exports: [Web3Service],
 })
 export class Web3Module {}

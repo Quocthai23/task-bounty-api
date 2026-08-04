@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../../notifications/services/notifications.service';
+import { Web3Service } from '../../web3/services/web3.service';
 import { 
   CreateProjectDto, 
   UpdateProjectDto, 
@@ -15,6 +16,7 @@ export class ProjectsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly web3Service: Web3Service,
   ) {}
 
   async create(ownerId: string, dto: CreateProjectDto) {
@@ -344,16 +346,84 @@ export class ProjectsService {
       }
     });
 
-    // Create notification for target user
-    await this.prisma.notification.create({
+    // Create notification for target user with invitation details via NotificationsService
+    await this.notificationsService.createNotification(
+      targetUser.id,
+      `📩 Bạn vừa nhận được lời mời tham gia dự án "${project.title}" với vai trò ${dto.role}.`,
+      'PROJECT_INVITE',
+      {
+        projectId: project.id,
+        projectTitle: project.title,
+        role: dto.role,
+        inviterId: currentUserId,
+        memberId: member.id,
+        status: 'PENDING'
+      }
+    );
+
+    return member;
+  }
+
+  /**
+   * Accept project invitation
+   */
+  async acceptInvitation(projectId: string, currentUserId: string) {
+    const project = await this.findOne(projectId);
+    const member = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: currentUserId } }
+    });
+
+    if (!member) {
+      throw new NotFoundException('Không tìm thấy lời mời tham gia dự án này');
+    }
+
+    // Ghi nhận Activity log
+    await this.prisma.activityLog.create({
       data: {
-        userId: targetUser.id,
-        type: 'SYSTEM',
-        content: `Bạn đã được thêm vào dự án "${project.title}" với vai trò ${dto.role}.`,
+        userId: currentUserId,
+        action: 'JOIN_PROJECT',
+        details: `Người dùng đã chấp nhận tham gia dự án "${project.title}"`,
       }
     });
 
-    return member;
+    return {
+      success: true,
+      message: `Bạn đã tham gia thành công vào dự án "${project.title}"!`,
+      project,
+    };
+  }
+
+  /**
+   * Reject project invitation
+   */
+  async rejectInvitation(projectId: string, currentUserId: string) {
+    const project = await this.findOne(projectId);
+    const member = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: currentUserId } }
+    });
+
+    if (!member) {
+      throw new NotFoundException('Không tìm thấy lời mời tham gia dự án này');
+    }
+
+    // Xóa khỏi projectMember
+    await this.prisma.projectMember.delete({
+      where: { id: member.id }
+    });
+
+    // Ghi nhận Activity log
+    await this.prisma.activityLog.create({
+      data: {
+        userId: currentUserId,
+        action: 'LEAVE_PROJECT',
+        details: `Người dùng đã từ chối tham gia dự án "${project.title}"`,
+      }
+    });
+
+    return {
+      success: true,
+      message: `Đã từ chối tham gia dự án "${project.title}".`,
+    };
   }
 
   /**
@@ -390,7 +460,7 @@ export class ProjectsService {
   }
 
   /**
-   * Bonus / Reward standout member
+   * Bonus / Reward standout member (độc lập với quỹ Escrow của Job)
    */
   async rewardMember(projectId: string, memberId: string, currentUserId: string, dto: RewardMemberDto) {
     const project = await this.findOne(projectId);
@@ -405,10 +475,76 @@ export class ProjectsService {
       throw new NotFoundException('Không tìm thấy thành viên trong dự án');
     }
 
+    // 1. CHẶN PM TỰ THƯỞNG CHO CHÍNH MÌNH
+    if (member.userId === currentUserId) {
+      throw new BadRequestException('PM không thể tự thưởng bonus cho chính mình!');
+    }
+
     const currency = (dto.currency || project.currency || 'USD').toUpperCase();
     const amount = Number(dto.amount);
+    const source = dto.source || 'CREDIT';
 
-    // 1. Increment bonusReceived on ProjectMember
+    let realTxHash = `bonus_${projectId}_${Date.now()}`;
+
+    // 2. XỬ LÝ NGUỒN TIỀN THƯỞNG
+    if (source === 'ON_CHAIN') {
+      if (!member.user.walletAddress) {
+        throw new BadRequestException('Thành viên nhận thưởng chưa liên kết địa chỉ ví nhận token on-chain!');
+      }
+      // Chuyển token trực tiếp từ ví PM sang ví Member trên Blockchain
+      const onChainResult = await this.web3Service.transferDirectToken(
+        currentUserId,
+        member.user.walletAddress,
+        amount,
+        currency
+      );
+      realTxHash = onChainResult.txHash;
+    } else {
+      // NGUỒN CREDIT: Trừ từ số dư Credit của PM
+      const pmWallet = await this.prisma.userWallet.findUnique({ where: { userId: currentUserId } });
+      const pmCredits = Number(pmWallet?.systemCredits || 0);
+
+      if (pmCredits < amount) {
+        throw new BadRequestException(
+          `Số dư Credit của bạn (${pmCredits.toLocaleString()} ${currency}) không đủ để thưởng ${amount.toLocaleString()} ${currency}. Vui lòng nạp thêm Credit!`
+        );
+      }
+
+      // Trừ Credit của PM
+      await this.prisma.userWallet.update({
+        where: { userId: currentUserId },
+        data: {
+          systemCredits: { decrement: amount }
+        }
+      });
+
+      // Cộng Credit cho Member nhận thưởng
+      await this.prisma.userWallet.upsert({
+        where: { userId: member.userId },
+        update: {
+          systemCredits: { increment: amount }
+        },
+        create: {
+          userId: member.userId,
+          systemCredits: amount,
+          currency,
+        }
+      });
+
+      // Ghi nhận giao dịch DEBIT cho PM
+      await this.prisma.transaction.create({
+        data: {
+          userId: currentUserId,
+          type: 'WITHDRAW',
+          amount: -amount,
+          currency,
+          status: 'COMPLETED',
+          txHash: `bonus_debit_${projectId}_${Date.now()}`,
+        }
+      });
+    }
+
+    // 3. Increment bonusReceived on ProjectMember
     const updatedMember = await this.prisma.projectMember.update({
       where: { id: memberId },
       data: {
@@ -416,20 +552,7 @@ export class ProjectsService {
       }
     });
 
-    // 2. Credit to recipient's wallet balance
-    await this.prisma.userWallet.upsert({
-      where: { userId: member.userId },
-      update: {
-        systemCredits: { increment: amount }
-      },
-      create: {
-        userId: member.userId,
-        systemCredits: amount,
-        currency,
-      }
-    });
-
-    // 3. Create Transaction log
+    // 4. Create Transaction log cho người nhận
     await this.prisma.transaction.create({
       data: {
         userId: member.userId,
@@ -437,31 +560,32 @@ export class ProjectsService {
         amount,
         currency,
         status: 'COMPLETED',
-        txHash: `bonus_${projectId}_${Date.now()}`,
+        txHash: realTxHash,
       }
     });
 
-    // 4. Send Notification to recipient
+    // 5. Send Notification to recipient
     await this.prisma.notification.create({
       data: {
         userId: member.userId,
-        type: 'SYSTEM',
-        content: `🎉 Chúc mừng! Bạn vừa nhận được phần thưởng xuất sắc ${amount} ${currency} từ PM dự án "${project.title}". Lý do: ${dto.reason}`,
+        type: 'BONUS',
+        content: `🎉 Chúc mừng! Bạn vừa nhận được phần thưởng xuất sắc ${amount.toLocaleString()} ${currency} (${source === 'ON_CHAIN' ? 'On-Chain' : 'Credit'}) từ PM dự án "${project.title}". Lý do: ${dto.reason}`,
       }
     });
 
-    // 5. Activity Log
+    // 6. Activity Log
     await this.prisma.activityLog.create({
       data: {
         userId: currentUserId,
         action: 'BONUS_REWARD',
-        details: `PM đã thưởng ${amount} ${currency} cho thành viên ${member.user.email} trong dự án "${project.title}". Lý do: ${dto.reason}`,
+        details: `PM đã thưởng ${amount.toLocaleString()} ${currency} (${source}) cho thành viên ${member.user.email} trong dự án "${project.title}". Lý do: ${dto.reason}`,
       }
     });
 
     return {
       success: true,
-      message: `Đã trao thưởng thành công ${amount} ${currency} cho ${member.user.email}!`,
+      message: `Đã trao thưởng thành công ${amount.toLocaleString()} ${currency} cho ${member.user.email}!`,
+      txHash: realTxHash,
       member: updatedMember,
     };
   }

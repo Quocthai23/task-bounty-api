@@ -898,16 +898,16 @@ export class WalletsService {
             const srcContract = new ethers.Contract(srcAddr, abi, signer);
             const tgtContract = new ethers.Contract(tgtAddr, abi, signer);
 
-            // Check current on-chain balance of source token
+            // Check current on-chain balance of source token strictly
             const srcBalWei = await srcContract.balanceOf(user.walletAddress);
             const reqBurnWei = ethers.parseUnits(String(dto.amount), 18);
-            const burnWei = srcBalWei < reqBurnWei ? srcBalWei : reqBurnWei;
-
-            if (burnWei > 0n) {
-              const burnNonce = await provider.getTransactionCount(signer.address, 'latest');
-              const burnTx = await srcContract.burn(`swap_burn_${tx.id}`, user.walletAddress, burnWei, { nonce: burnNonce });
-              await burnTx.wait(1);
+            if (srcBalWei < reqBurnWei) {
+              throw new BadRequestException(`Số dư ${srcCurr} on-chain không đủ để quy đổi. Cần ${dto.amount} ${srcCurr}, hiện có ${ethers.formatUnits(srcBalWei, 18)} ${srcCurr}.`);
             }
+
+            const burnNonce = await provider.getTransactionCount(signer.address, 'latest');
+            const burnTx = await srcContract.burn(`swap_burn_${tx.id}`, user.walletAddress, reqBurnWei, { nonce: burnNonce });
+            await burnTx.wait(1);
 
             const mintNonce = await provider.getTransactionCount(signer.address, 'latest');
             const mintTx = await tgtContract.mint(`swap_mint_${tx.id}`, user.walletAddress, ethers.parseUnits(String(targetAmount), 18), { nonce: mintNonce });

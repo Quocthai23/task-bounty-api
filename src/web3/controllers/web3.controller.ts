@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { Web3Service } from '../services/web3.service';
-import { LockFundDto, ApprovePayoutDto, SyncTransactionDto, Web3ResponseDto, SyncResponseDto } from '../dto/web3.dto';
+import { LockFundDto, ApprovePayoutDto, RefundEscrowDto, SyncTransactionDto, Web3ResponseDto, SyncResponseDto } from '../dto/web3.dto';
 import { AuthGuard } from '../../auth/guards/auth.guard';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 
@@ -31,6 +31,18 @@ export class Web3Controller {
   @Post('approve-payout')
   approvePayout(@Request() req: any, @Body() dto: ApprovePayoutDto) {
     return this.web3Service.approvePayout(req.user.sub, dto.taskId);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Refund escrowed funds back to PM' })
+  @ApiResponse({ status: 201, description: 'Funds refunded successfully.', type: Web3ResponseDto })
+  @ApiResponse({ status: 400, description: 'Bad Request' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @Post('refund-escrow')
+  refundEscrow(@Request() req: any, @Body() dto: RefundEscrowDto) {
+    return this.web3Service.refundEscrow(req.user.sub, dto.taskId);
   }
 
   @ApiOperation({ summary: 'Sync Blockchain Transaction Status (Webhook/Indexer)' })

@@ -48,6 +48,14 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   assigneeId?: string;
+
+  @ApiPropertyOptional({ example: [{ title: 'Thiết kế giao diện con', description: 'Chi tiết mô tả...' }] })
+  @IsOptional()
+  subtasks?: any[];
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  autoLockEscrow?: boolean;
 }
 
 export class UpdateTaskDto {

@@ -1257,6 +1257,64 @@
         ]
       }
     },
+    "/api/projects/{id}/invitation/accept": {
+      "post": {
+        "operationId": "ProjectsController_acceptInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation accepted."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept project invitation",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/{id}/invitation/reject": {
+      "post": {
+        "operationId": "ProjectsController_rejectInvitation",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation rejected."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Reject project invitation",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
     "/api/projects/{id}/applications": {
       "post": {
         "operationId": "ProjectsController_apply",
@@ -1432,6 +1490,179 @@
         "summary": "Complete project and evenly distribute surplus escrow budget to members (excluding PM)",
         "tags": [
           "Projects"
+        ]
+      }
+    },
+    "/api/bounty/lock-fund": {
+      "post": {
+        "operationId": "Web3Controller_lockFund",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LockFundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Funds locked successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Web3ResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lock funds in Smart Contract (Escrow)",
+        "tags": [
+          "Web3 & Bounty"
+        ]
+      }
+    },
+    "/api/bounty/approve-payout": {
+      "post": {
+        "operationId": "Web3Controller_approvePayout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovePayoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payout approved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Web3ResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve payout from Smart Contract to Developer",
+        "tags": [
+          "Web3 & Bounty"
+        ]
+      }
+    },
+    "/api/bounty/refund-escrow": {
+      "post": {
+        "operationId": "Web3Controller_refundEscrow",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundEscrowDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Funds refunded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Web3ResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refund escrowed funds back to PM",
+        "tags": [
+          "Web3 & Bounty"
+        ]
+      }
+    },
+    "/api/bounty/sync": {
+      "post": {
+        "operationId": "Web3Controller_syncTransaction",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncTransactionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction synced.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        },
+        "summary": "Sync Blockchain Transaction Status (Webhook/Indexer)",
+        "tags": [
+          "Web3 & Bounty"
         ]
       }
     },
@@ -1824,133 +2055,6 @@
         "summary": "Get task activity logs and history across projects",
         "tags": [
           "Tasks"
-        ]
-      }
-    },
-    "/api/bounty/lock-fund": {
-      "post": {
-        "operationId": "Web3Controller_lockFund",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LockFundDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Funds locked successfully.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Web3ResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Lock funds in Smart Contract (Escrow)",
-        "tags": [
-          "Web3 & Bounty"
-        ]
-      }
-    },
-    "/api/bounty/approve-payout": {
-      "post": {
-        "operationId": "Web3Controller_approvePayout",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApprovePayoutDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Payout approved successfully.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Web3ResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Approve payout from Smart Contract to Developer",
-        "tags": [
-          "Web3 & Bounty"
-        ]
-      }
-    },
-    "/api/bounty/sync": {
-      "post": {
-        "operationId": "Web3Controller_syncTransaction",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SyncTransactionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Transaction synced.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SyncResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request"
-          }
-        },
-        "summary": "Sync Blockchain Transaction Status (Webhook/Indexer)",
-        "tags": [
-          "Web3 & Bounty"
         ]
       }
     },
@@ -3218,6 +3322,15 @@
             "example": "USD",
             "default": "USD"
           },
+          "source": {
+            "type": "string",
+            "example": "CREDIT",
+            "enum": [
+              "CREDIT",
+              "ON_CHAIN"
+            ],
+            "default": "CREDIT"
+          },
           "reason": {
             "type": "string",
             "example": "Khen thưởng hoàn thành xuất sắc Sprint 1 đúng hạn!"
@@ -3287,6 +3400,102 @@
           "role"
         ]
       },
+      "LockFundDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "example": "task-uuid-123"
+          }
+        },
+        "required": [
+          "taskId"
+        ]
+      },
+      "Web3ResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "txHash": {
+            "type": "string",
+            "example": "0xlock_123456789"
+          },
+          "message": {
+            "type": "string",
+            "example": "Funds locked in Escrow"
+          }
+        },
+        "required": [
+          "success",
+          "txHash",
+          "message"
+        ]
+      },
+      "ApprovePayoutDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "example": "task-uuid-123"
+          }
+        },
+        "required": [
+          "taskId"
+        ]
+      },
+      "RefundEscrowDto": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "example": "task-uuid-123"
+          }
+        },
+        "required": [
+          "taskId"
+        ]
+      },
+      "SyncTransactionDto": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string",
+            "example": "0x123abc456def789..."
+          },
+          "status": {
+            "type": "string",
+            "example": "COMPLETED",
+            "enum": [
+              "COMPLETED",
+              "FAILED"
+            ]
+          }
+        },
+        "required": [
+          "txHash",
+          "status"
+        ]
+      },
+      "SyncResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Transaction status updated to COMPLETED"
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ]
+      },
       "CreateTaskDto": {
         "type": "object",
         "properties": {
@@ -3335,6 +3544,22 @@
           "assigneeId": {
             "type": "string",
             "example": "uuid-of-assignee"
+          },
+          "subtasks": {
+            "example": [
+              {
+                "title": "Thiết kế giao diện con",
+                "description": "Chi tiết mô tả..."
+              }
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "autoLockEscrow": {
+            "type": "boolean",
+            "example": true
           }
         },
         "required": [
@@ -3475,90 +3700,6 @@
           "id",
           "content",
           "userId"
-        ]
-      },
-      "LockFundDto": {
-        "type": "object",
-        "properties": {
-          "taskId": {
-            "type": "string",
-            "example": "task-uuid-123"
-          }
-        },
-        "required": [
-          "taskId"
-        ]
-      },
-      "Web3ResponseDto": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": true
-          },
-          "txHash": {
-            "type": "string",
-            "example": "0xlock_123456789"
-          },
-          "message": {
-            "type": "string",
-            "example": "Funds locked in Escrow"
-          }
-        },
-        "required": [
-          "success",
-          "txHash",
-          "message"
-        ]
-      },
-      "ApprovePayoutDto": {
-        "type": "object",
-        "properties": {
-          "taskId": {
-            "type": "string",
-            "example": "task-uuid-123"
-          }
-        },
-        "required": [
-          "taskId"
-        ]
-      },
-      "SyncTransactionDto": {
-        "type": "object",
-        "properties": {
-          "txHash": {
-            "type": "string",
-            "example": "0x123abc456def789..."
-          },
-          "status": {
-            "type": "string",
-            "example": "COMPLETED",
-            "enum": [
-              "COMPLETED",
-              "FAILED"
-            ]
-          }
-        },
-        "required": [
-          "txHash",
-          "status"
-        ]
-      },
-      "SyncResponseDto": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": true
-          },
-          "message": {
-            "type": "string",
-            "example": "Transaction status updated to COMPLETED"
-          }
-        },
-        "required": [
-          "success",
-          "message"
         ]
       },
       "WebhookResponseDto": {

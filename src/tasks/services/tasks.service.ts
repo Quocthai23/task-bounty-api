@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../../notifications/services/notifications.service';
+import { Web3Service } from '../../web3/services/web3.service';
 import { CreateTaskDto, UpdateTaskDto, CreateCommentDto } from '../dto/tasks.dto';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly web3Service: Web3Service,
   ) {}
 
   async create(projectId: string, userId: string, dto: CreateTaskDto) {
@@ -96,18 +98,45 @@ export class TasksService {
       console.error('Failed to log TASK_CREATED activity:', e);
     }
 
-    // Notify assignee if assigned
-    if (dto.assigneeId) {
-      await this.notificationsService.notifyTaskAssigned(
-        dto.assigneeId,
-        dto.title,
-        project.title,
-        newTask.id,
-        projectId
-      );
+    // Auto-create subtasks if provided
+    if (dto.subtasks && Array.isArray(dto.subtasks) && dto.subtasks.length > 0) {
+      for (const sub of dto.subtasks) {
+        if (!sub.title || !sub.title.trim()) continue;
+        await this.prisma.task.create({
+          data: {
+            projectId,
+            title: sub.title.trim(),
+            description: sub.description || `Tiêu chí / Nhiệm vụ con cho "${newTask.title}"`,
+            budget: Number(sub.budget) || 0,
+            deadline: sub.deadline ? new Date(sub.deadline) : (newTask.deadline || null),
+            priority: sub.priority || newTask.priority || 'Moderate',
+            parentId: newTask.id,
+            assigneeId: sub.assigneeId || newTask.assigneeId || null,
+            status: 'OPEN',
+          }
+        });
+      }
     }
 
-    return newTask;
+    // Auto-lock escrow on chain if requested
+    if (dto.autoLockEscrow && requestedBudget > 0) {
+      try {
+        await this.web3Service.lockFund(newTask.id, userId);
+      } catch (err: any) {
+        console.warn(`Auto-lock escrow failed for task ${newTask.id}:`, err.message);
+      }
+    }
+
+    // Return task with children
+    const createdTask = await this.prisma.task.findUnique({
+      where: { id: newTask.id },
+      include: {
+        assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } },
+        children: true,
+      }
+    });
+
+    return createdTask || newTask;
   }
 
   async findAllByProject(projectId: string, page: number, limit: number) {
@@ -274,7 +303,7 @@ export class TasksService {
       }
     });
 
-    // Automatic Payout when Task transitions to DONE
+    // Automatic On-Chain Payout when Task transitions to DONE
     const isBecomingDone = task.status !== 'DONE' && dto.status === 'DONE';
     if (isBecomingDone && updatedTask.budget > 0 && updatedTask.assigneeId) {
       const targetUserId = updatedTask.assigneeId;
@@ -282,45 +311,28 @@ export class TasksService {
       const projectCurrency = task.project.currency || 'USD';
 
       try {
-        // 1. Credit wallet balance
-        await this.prisma.userWallet.upsert({
-          where: { userId: targetUserId },
-          create: {
-            userId: targetUserId,
-            systemCredits: payoutAmount,
-          },
-          update: {
-            systemCredits: { increment: payoutAmount }
-          }
-        });
+        // Thực hiện giải ngân Token On-Chain thật từ Ví Fiat-Bridge sang Ví Dev
+        const payoutRes = await this.web3Service.approvePayout(userId, updatedTask.id);
 
-        // 2. Record Transaction
-        await this.prisma.transaction.create({
-          data: {
-            userId: targetUserId,
-            type: 'PAYOUT',
-            amount: payoutAmount,
-            currency: projectCurrency,
-            status: 'COMPLETED',
-            txHash: `task_done_${updatedTask.id}_${Date.now()}`
-          }
-        });
-
-        // 3. Increment bonusReceived in ProjectMember
-        await this.prisma.projectMember.updateMany({
-          where: { projectId: task.projectId, userId: targetUserId },
-          data: { bonusReceived: { increment: payoutAmount } }
-        });
-
-        // 4. Send Notification to Developer
+        // Gửi thông báo đến Developer kèm TxHash On-Chain
         await this.notificationsService.createNotification(
           targetUserId,
-          `🎉 Nhiệm vụ "${updatedTask.title}" đã được nghiệm thu hoàn thành! Bạn nhận được thanh toán ${payoutAmount.toLocaleString()} ${projectCurrency}.`,
+          `🎉 Nhiệm vụ "${updatedTask.title}" đã được nghiệm thu hoàn thành! Bạn nhận được thanh toán ${payoutAmount.toLocaleString()} ${projectCurrency} trên Blockchain!`,
           'SYSTEM',
-          { taskId: updatedTask.id, projectId: task.projectId, amount: payoutAmount }
+          { taskId: updatedTask.id, projectId: task.projectId, amount: payoutAmount, txHash: payoutRes?.txHash }
         );
-      } catch (err) {
-        console.error('Failed to auto-payout on task completion:', err);
+      } catch (err: any) {
+        console.error('Failed to execute on-chain payout on task completion:', err?.message || err);
+      }
+    }
+
+    // Automatic On-Chain Refund when an Escrowed Task is CANCELLED
+    const isBecomingCancelled = task.status !== 'CANCELLED' && dto.status === 'CANCELLED';
+    if (isBecomingCancelled && task.isEscrowed && task.budget > 0) {
+      try {
+        await this.web3Service.refundEscrow(userId, task.id);
+      } catch (err: any) {
+        console.error('Failed to execute on-chain refund on task cancellation:', err?.message || err);
       }
     }
 

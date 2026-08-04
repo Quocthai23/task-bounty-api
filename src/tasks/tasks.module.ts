@@ -3,10 +3,12 @@ import { TasksController } from './controllers/tasks.controller';
 import { TasksService } from './services/tasks.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { Web3Module } from '../web3/web3.module';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule],
+  imports: [PrismaModule, NotificationsModule, Web3Module],
   controllers: [TasksController],
-  providers: [TasksService]
+  providers: [TasksService],
+  exports: [TasksService],
 })
 export class TasksModule {}
