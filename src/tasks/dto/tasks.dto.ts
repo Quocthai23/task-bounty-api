@@ -26,6 +26,14 @@ export class CreateTaskDto {
   @IsString()
   priority?: string;
 
+  @ApiPropertyOptional({ example: '["Frontend", "Bug"]' })
+  @IsOptional()
+  tags?: string | string[];
+
+  @ApiPropertyOptional({ example: '[{"id":"1","name":"design.png","base64":"data:image/png;base64,..."}]' })
+  @IsOptional()
+  attachments?: any;
+
   @ApiPropertyOptional({ example: '2026-12-31T23:59:59Z' })
   @IsOptional()
   @IsString()
@@ -43,6 +51,11 @@ export class CreateTaskDto {
 }
 
 export class UpdateTaskDto {
+  @ApiPropertyOptional({ example: 'Fix Navbar' })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
   @ApiPropertyOptional({ example: 'IN_PROGRESS', enum: ['OPEN', 'IN_PROGRESS', 'REVIEW', 'DONE'] })
   @IsOptional()
   @IsIn(['OPEN', 'IN_PROGRESS', 'REVIEW', 'DONE'])
@@ -57,6 +70,29 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional({ example: 500 })
+  @IsOptional()
+  @IsNumber()
+  budget?: number;
+
+  @ApiPropertyOptional({ example: 'Moderate' })
+  @IsOptional()
+  @IsString()
+  priority?: string;
+
+  @ApiPropertyOptional({ example: '["Frontend", "Bug"]' })
+  @IsOptional()
+  tags?: string | string[];
+
+  @ApiPropertyOptional({ example: '[{"id":"1","name":"design.png","base64":"data:image/png;base64,..."}]' })
+  @IsOptional()
+  attachments?: any;
+
+  @ApiPropertyOptional({ example: '2026-12-31T23:59:59Z' })
+  @IsOptional()
+  @IsString()
+  deadline?: string;
 }
 
 export class CreateCommentDto {

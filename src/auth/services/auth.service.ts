@@ -185,7 +185,10 @@ export class AuthService {
       { expiresIn: '15m' }
     );
 
-    return { challengeToken };
+    return { 
+      challengeToken,
+      challenge_token: challengeToken,
+    };
   }
 
   private async generateToken(user: any) {

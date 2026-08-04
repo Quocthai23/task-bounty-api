@@ -1406,6 +1406,35 @@
         ]
       }
     },
+    "/api/projects/{id}/complete": {
+      "post": {
+        "operationId": "ProjectsController_completeProject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project completed and surplus distributed."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete project and evenly distribute surplus escrow budget to members (excluding PM)",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
     "/api/projects/{projectId}/tasks": {
       "post": {
         "operationId": "TasksController_create",
@@ -3287,6 +3316,14 @@
             "type": "string",
             "example": "Moderate"
           },
+          "tags": {
+            "type": "object",
+            "example": "[\"Frontend\", \"Bug\"]"
+          },
+          "attachments": {
+            "type": "object",
+            "example": "[{\"id\":\"1\",\"name\":\"design.png\",\"base64\":\"data:image/png;base64,...\"}]"
+          },
           "deadline": {
             "type": "string",
             "example": "2026-12-31T23:59:59Z"
@@ -3362,6 +3399,10 @@
       "UpdateTaskDto": {
         "type": "object",
         "properties": {
+          "title": {
+            "type": "string",
+            "example": "Fix Navbar"
+          },
           "status": {
             "type": "string",
             "example": "IN_PROGRESS",
@@ -3379,6 +3420,26 @@
           "description": {
             "type": "string",
             "example": "Updated description"
+          },
+          "budget": {
+            "type": "number",
+            "example": 500
+          },
+          "priority": {
+            "type": "string",
+            "example": "Moderate"
+          },
+          "tags": {
+            "type": "object",
+            "example": "[\"Frontend\", \"Bug\"]"
+          },
+          "attachments": {
+            "type": "object",
+            "example": "[{\"id\":\"1\",\"name\":\"design.png\",\"base64\":\"data:image/png;base64,...\"}]"
+          },
+          "deadline": {
+            "type": "string",
+            "example": "2026-12-31T23:59:59Z"
           }
         }
       },

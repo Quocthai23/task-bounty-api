@@ -138,6 +138,9 @@ model Task {
   assignee    User?     @relation("TaskAssignee", fields: [assigneeId], references: [id])
   status      String    @default("OPEN") // OPEN, IN_PROGRESS, REVIEW, DONE
   riskScore   Int       @default(0)
+  priority    String?   @default("Moderate") // Low, Moderate, High, Urgent
+  tags        String?   // JSON stringified array of string tags e.g. ["Frontend", "Bug"]
+  attachments String?   // JSON stringified array of attachments/images e.g. [{id, name, base64, size, type}]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

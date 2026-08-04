@@ -250,7 +250,8 @@ export class ProjectsService {
 
   /**
    * Update Project Details with Strict Budget Escrow Locking Rule:
-   * If any candidate has applied (applications.length > 0), the budget is permanently locked!
+   * - If NO applicants (applications.length === 0): PM can adjust budget up or down (cannot be less than allocated tasks budget).
+   * - If ANY applicant exists (applications.length > 0): PM can ONLY increase budget (add funds), CANNOT decrease it!
    */
   async update(id: string, currentUserId: string, dto: UpdateProjectDto) {
     const project = await this.findOne(id);
@@ -259,10 +260,21 @@ export class ProjectsService {
     // Strict Budget Escrow Lock Check
     if (dto.budget !== undefined && dto.budget !== project.budget) {
       const applicationCount = await this.prisma.application.count({ where: { projectId: id } });
+      const existingTasks = await this.prisma.task.findMany({ where: { projectId: id }, select: { budget: true } });
+      const totalTaskBudget = existingTasks.reduce((sum, t) => sum + (t.budget || 0), 0);
+
       if (applicationCount > 0) {
-        throw new BadRequestException(
-          'Ngân sách dự án đã được KHÓA CỐ ĐỊNH do đã có ứng viên nộp hồ sơ ứng tuyển. Không thể thay đổi mức ngân sách để đảm bảo quyền lợi và tính minh bạch cho ứng viên.'
-        );
+        if (dto.budget < project.budget) {
+          throw new BadRequestException(
+            'Ngân sách dự án đã được khóa bảo chứng do đã có ứng viên nộp hồ sơ. Bạn chỉ có thể nạp thêm ngân sách (tăng lên), không được rút bớt ngân sách để đảm bảo quyền lợi ứng viên.'
+          );
+        }
+      } else {
+        if (dto.budget < totalTaskBudget) {
+          throw new BadRequestException(
+            `Ngân sách dự án (${dto.budget.toLocaleString()} ${project.currency}) không thể giảm xuống dưới tổng ngân sách các nhiệm vụ đã phân bổ (${totalTaskBudget.toLocaleString()} ${project.currency}).`
+          );
+        }
       }
     }
 
@@ -609,6 +621,135 @@ export class ProjectsService {
       update: { role },
       create: { projectId, userId: targetUserId, role },
     });
+  }
+
+  async completeProject(projectId: string, currentUserId: string) {
+    const project = await this.findOne(projectId);
+    this.ensureIsPMOrOwner(project, currentUserId);
+
+    if (project.status === 'COMPLETED') {
+      throw new BadRequestException('Dự án này đã được hoàn thành trước đó');
+    }
+
+    // 1. Calculate completed tasks budgets
+    const tasks = await this.prisma.task.findMany({ where: { projectId } });
+    const totalPaidTasks = tasks
+      .filter(t => t.status === 'DONE')
+      .reduce((sum, t) => sum + (t.budget || 0), 0);
+
+    const totalProjectBudget = project.budget || 0;
+    const surplusBudget = Math.max(0, totalProjectBudget - totalPaidTasks);
+    const currency = project.currency || 'USD';
+
+    // 2. Identify eligible non-PM members (exclude PM and project owner)
+    const members = await this.prisma.projectMember.findMany({
+      where: { projectId },
+      include: { user: true }
+    });
+    const eligibleMembers = members.filter(m => m.role !== 'PM' && m.userId !== project.ownerId);
+
+    let sharePerMember = 0;
+    let distributedTotal = 0;
+    const payoutResults: Array<{ userId: string; email: string; amount: number }> = [];
+
+    // 3. Evenly distribute surplus budget to non-PM members
+    if (surplusBudget > 0 && eligibleMembers.length > 0) {
+      sharePerMember = Math.floor((surplusBudget / eligibleMembers.length) * 100) / 100;
+
+      for (const member of eligibleMembers) {
+        if (sharePerMember <= 0) continue;
+
+        try {
+          // A. Credit to user wallet system credits
+          await this.prisma.userWallet.upsert({
+            where: { userId: member.userId },
+            create: { userId: member.userId, systemCredits: sharePerMember },
+            update: { systemCredits: { increment: sharePerMember } }
+          });
+
+          // B. Update member bonus received
+          await this.prisma.projectMember.update({
+            where: { id: member.id },
+            data: { bonusReceived: { increment: sharePerMember } }
+          });
+
+          // C. Create Transaction record
+          await this.prisma.transaction.create({
+            data: {
+              userId: member.userId,
+              type: 'PAYOUT',
+              amount: sharePerMember,
+              currency,
+              status: 'COMPLETED',
+              txHash: `surplus_${projectId}_${Date.now()}_${member.userId.slice(0, 6)}`
+            }
+          });
+
+          // D. Notify recipient
+          await this.notificationsService.createNotification(
+            member.userId,
+            `🎉 Dự án "${project.title}" đã hoàn tất! Bạn được chia đều phần ngân sách thặng dư còn lại là +${sharePerMember.toLocaleString()} ${currency}.`,
+            'SYSTEM',
+            { projectId, amount: sharePerMember, type: 'SURPLUS_DISTRIBUTION' }
+          );
+
+          distributedTotal += sharePerMember;
+          payoutResults.push({
+            userId: member.userId,
+            email: member.user.email,
+            amount: sharePerMember
+          });
+        } catch (err) {
+          console.error(`Failed to disburse surplus to member ${member.userId}:`, err);
+        }
+      }
+    }
+
+    // 4. Update Project status to COMPLETED
+    const updatedProject = await this.prisma.project.update({
+      where: { id: projectId },
+      data: {
+        status: 'COMPLETED',
+        isRecruiting: false
+      },
+      include: {
+        members: { include: { user: true } },
+        tasks: true
+      }
+    });
+
+    // 5. Activity Log
+    try {
+      await this.prisma.activityLog.create({
+        data: {
+          userId: currentUserId,
+          action: 'PROJECT_COMPLETED',
+          details: JSON.stringify({
+            projectId,
+            projectTitle: project.title,
+            totalBudget: totalProjectBudget,
+            totalPaidTasks,
+            surplusBudget,
+            eligibleMembersCount: eligibleMembers.length,
+            sharePerMember,
+            distributedTotal
+          })
+        }
+      });
+    } catch (e) {
+      console.error('Failed to log PROJECT_COMPLETED activity:', e);
+    }
+
+    return {
+      success: true,
+      message: `Dự án "${project.title}" đã hoàn thành! Đã chia đều ${distributedTotal.toLocaleString()} ${currency} thặng dư cho ${eligibleMembers.length} thành viên.`,
+      project: updatedProject,
+      surplusBudget,
+      eligibleMembersCount: eligibleMembers.length,
+      sharePerMember,
+      distributedTotal,
+      payoutResults
+    };
   }
 
   private ensureIsPMOrOwner(project: any, userId: string) {

@@ -36,11 +36,32 @@ export class TasksService {
       await this.ensureNoCircularDependency(dto.parentId, null);
     }
 
+    // Strict Escrow Budget Check: Task budget is deducted from project's locked escrow pool
+    const existingTasks = await this.prisma.task.findMany({
+      where: { projectId },
+      select: { budget: true }
+    });
+    const allocatedBudget = existingTasks.reduce((sum, t) => sum + (t.budget || 0), 0);
+    const requestedBudget = Number(dto.budget) || 0;
+    const availableEscrow = Math.max(0, (project.budget || 0) - allocatedBudget);
+
+    if (requestedBudget > 0 && requestedBudget > availableEscrow) {
+      throw new BadRequestException(
+        `Ngân sách nhiệm vụ (${requestedBudget.toLocaleString()} ${project.currency}) vượt quá số dư bảo chứng còn lại của dự án (${availableEscrow.toLocaleString()} ${project.currency}). Vui lòng nạp thêm ngân sách vào dự án trước khi tạo thêm task.`
+      );
+    }
+
+    const tagsValue = Array.isArray(dto.tags) ? JSON.stringify(dto.tags) : (typeof dto.tags === 'string' ? dto.tags : null);
+    const attachmentsValue = typeof dto.attachments === 'object' && dto.attachments !== null ? JSON.stringify(dto.attachments) : (typeof dto.attachments === 'string' ? dto.attachments : null);
+
     const newTask = await this.prisma.task.create({ 
       data: {
         title: dto.title,
         description: dto.description || 'Chưa có mô tả chi tiết cho nhiệm vụ này.',
-        budget: Number(dto.budget) || 0,
+        budget: requestedBudget,
+        priority: dto.priority || 'Moderate',
+        tags: tagsValue,
+        attachments: attachmentsValue,
         deadline: dto.deadline ? new Date(dto.deadline) : null,
         parentId: dto.parentId || null,
         assigneeId: dto.assigneeId || null,
@@ -65,7 +86,7 @@ export class TasksService {
             projectTitle: project.title,
             assigneeId: dto.assigneeId,
             assigneeName: newTask.assignee ? `${newTask.assignee.firstName || ''} ${newTask.assignee.lastName || ''}`.trim() || newTask.assignee.email : null,
-            priority: (dto as any).priority || 'Tiêu chuẩn',
+            priority: newTask.priority || 'Moderate',
             status: newTask.status,
             budget: newTask.budget,
           })
@@ -221,13 +242,87 @@ export class TasksService {
       }
     }
 
+    // Budget update validation if changed
+    if (dto.budget !== undefined && dto.budget !== task.budget) {
+      const otherTasks = await this.prisma.task.findMany({
+        where: { projectId: task.projectId, id: { not: id } },
+        select: { budget: true }
+      });
+      const allocatedOther = otherTasks.reduce((sum, t) => sum + (t.budget || 0), 0);
+      const maxAllowed = Math.max(0, (task.project.budget || 0) - allocatedOther);
+      if (Number(dto.budget) > maxAllowed) {
+        throw new BadRequestException(
+          `Ngân sách nhiệm vụ mới (${dto.budget.toLocaleString()} ${task.project.currency}) vượt quá số dư bảo chứng tối đa cho phép của dự án (${maxAllowed.toLocaleString()} ${task.project.currency}).`
+        );
+      }
+    }
+
+    const { deadline, tags, attachments, ...restDto } = dto;
+    const tagsValue = tags !== undefined ? (Array.isArray(tags) ? JSON.stringify(tags) : (typeof tags === 'string' ? tags : null)) : undefined;
+    const attachmentsValue = attachments !== undefined ? (typeof attachments === 'object' && attachments !== null ? JSON.stringify(attachments) : (typeof attachments === 'string' ? attachments : null)) : undefined;
+
     const updatedTask = await this.prisma.task.update({ 
       where: { id }, 
-      data: dto,
+      data: {
+        ...restDto,
+        ...(deadline !== undefined ? { deadline: deadline ? new Date(deadline) : null } : {}),
+        ...(tagsValue !== undefined ? { tags: tagsValue } : {}),
+        ...(attachmentsValue !== undefined ? { attachments: attachmentsValue } : {}),
+      },
       include: {
         assignee: { select: { id: true, email: true, firstName: true, lastName: true, avatarUrl: true } }
       }
     });
+
+    // Automatic Payout when Task transitions to DONE
+    const isBecomingDone = task.status !== 'DONE' && dto.status === 'DONE';
+    if (isBecomingDone && updatedTask.budget > 0 && updatedTask.assigneeId) {
+      const targetUserId = updatedTask.assigneeId;
+      const payoutAmount = updatedTask.budget;
+      const projectCurrency = task.project.currency || 'USD';
+
+      try {
+        // 1. Credit wallet balance
+        await this.prisma.userWallet.upsert({
+          where: { userId: targetUserId },
+          create: {
+            userId: targetUserId,
+            systemCredits: payoutAmount,
+          },
+          update: {
+            systemCredits: { increment: payoutAmount }
+          }
+        });
+
+        // 2. Record Transaction
+        await this.prisma.transaction.create({
+          data: {
+            userId: targetUserId,
+            type: 'PAYOUT',
+            amount: payoutAmount,
+            currency: projectCurrency,
+            status: 'COMPLETED',
+            txHash: `task_done_${updatedTask.id}_${Date.now()}`
+          }
+        });
+
+        // 3. Increment bonusReceived in ProjectMember
+        await this.prisma.projectMember.updateMany({
+          where: { projectId: task.projectId, userId: targetUserId },
+          data: { bonusReceived: { increment: payoutAmount } }
+        });
+
+        // 4. Send Notification to Developer
+        await this.notificationsService.createNotification(
+          targetUserId,
+          `🎉 Nhiệm vụ "${updatedTask.title}" đã được nghiệm thu hoàn thành! Bạn nhận được thanh toán ${payoutAmount.toLocaleString()} ${projectCurrency}.`,
+          'SYSTEM',
+          { taskId: updatedTask.id, projectId: task.projectId, amount: payoutAmount }
+        );
+      } catch (err) {
+        console.error('Failed to auto-payout on task completion:', err);
+      }
+    }
 
     // Record Activity Log
     try {

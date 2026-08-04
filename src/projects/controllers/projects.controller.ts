@@ -177,4 +177,17 @@ export class ProjectsController {
     const userId = req.user.sub || req.user.id;
     return this.projectsService.assignRole(id, dto.userId, dto.role, userId);
   }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Complete project and evenly distribute surplus escrow budget to members (excluding PM)' })
+  @ApiResponse({ status: 200, description: 'Project completed and surplus distributed.' })
+  @UseGuards(AuthGuard)
+  @Post(':id/complete')
+  completeProject(
+    @Param('id') id: string,
+    @Request() req: any
+  ) {
+    const userId = req.user.sub || req.user.id;
+    return this.projectsService.completeProject(id, userId);
+  }
 }
