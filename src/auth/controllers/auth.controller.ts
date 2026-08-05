@@ -16,8 +16,8 @@ export class AuthController {
   private setCookies(res: Response, accessToken: string, refreshToken: string) {
     const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax' as const,
+      secure: true,
+      sameSite: 'none' as const,
     };
     if (accessToken) res.cookie('access_token', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 }); // 15m
     if (refreshToken) res.cookie('refresh_token', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7d
@@ -68,7 +68,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized - Invalid or expired refresh token' })
   @Post('refresh')
   async refresh(@Request() req: any, @Res({ passthrough: true }) res: Response, @Body() dto: RefreshTokenDto) {
-    const token = req.cookies?.refresh_token || dto.refreshToken;
+    const token = req.cookies?.refresh_token || dto?.refreshToken || (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : undefined);
     const result = await this.authService.refreshToken(token);
     this.setCookies(res, result.access_token, result.refresh_token);
     return result;
@@ -80,8 +80,8 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Post('logout')
   async logout(@Request() req: any, @Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token');
-    res.clearCookie('refresh_token');
+    res.clearCookie('access_token', { httpOnly: true, secure: true, sameSite: 'none' });
+    res.clearCookie('refresh_token', { httpOnly: true, secure: true, sameSite: 'none' });
     return this.authService.logout(req.user.sub);
   }
 
